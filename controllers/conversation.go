@@ -3,7 +3,10 @@ package controllers
 import (
 	"AkuAI/middleware"
 	"AkuAI/models"
+	"AkuAI/pkg/cache"
+	"AkuAI/pkg/config"
 	svc "AkuAI/pkg/services"
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
@@ -30,6 +33,19 @@ func CreateOrAddMessage(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		// Duplicate guard with bypass/header and cache-aware allowance
+		bypass := strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Bypass-Duplicate")), "1") ||
+			strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Bypass-Duplicate")), "true")
+		cacheKeyDup := cache.KeyFromStrings("chat-final", uidStr, strings.ToLower(strings.TrimSpace(body.Message)))
+		_, cacheHit := cache.Default().Get(cacheKeyDup)
+		if !bypass && !cacheHit {
+			if !middleware.DuplicateGuard(uidStr, body.Message) {
+				c.JSON(http.StatusConflict, gin.H{"msg": "duplicate message"})
+				return
+			}
+		}
+
+		// Create or find conversation
 		var conv models.Conversation
 		if body.ConversationID != nil {
 			if err := db.Preload("Messages").Where("id = ? AND user_id = ?", *body.ConversationID, uid).First(&conv).Error; err != nil {
@@ -37,15 +53,11 @@ func CreateOrAddMessage(db *gorm.DB) gin.HandlerFunc {
 				return
 			}
 		} else {
-			// create new conversation
 			title := body.Message
 			if len(title) > 30 {
 				title = title[:30] + "..."
 			}
-			conv = models.Conversation{
-				UserID: uint(uid),
-				Title:  title,
-			}
+			conv = models.Conversation{UserID: uint(uid), Title: title}
 			if err := db.Create(&conv).Error; err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"msg": "failed to create conversation"})
 				return
@@ -53,23 +65,15 @@ func CreateOrAddMessage(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		// Save user message
-		msgUser := models.Message{
-			ConversationID: conv.ID,
-			Sender:         "user",
-			Text:           body.Message,
-			Timestamp:      time.Now(),
-		}
+		msgUser := models.Message{ConversationID: conv.ID, Sender: "user", Text: body.Message, Timestamp: time.Now()}
 		if err := db.Create(&msgUser).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"msg": "failed to save message"})
 			return
 		}
 
-		// Build chat history (previous messages + current user turn) for a more
-		// detailed and contextual Gemini answer.
-		// Note: conv.Messages contains only prior turns; we append the latest user message.
+		// Build history
 		var history []svc.ChatMessage
 		if len(conv.Messages) > 0 {
-			// Ensure chronological order
 			msgs := append([]models.Message(nil), conv.Messages...)
 			sort.SliceStable(msgs, func(i, j int) bool { return msgs[i].Timestamp.Before(msgs[j].Timestamp) })
 			for _, m := range msgs {
@@ -82,50 +86,52 @@ func CreateOrAddMessage(db *gorm.DB) gin.HandlerFunc {
 		}
 		history = append(history, svc.ChatMessage{Role: "user", Text: body.Message})
 
-		// Try Gemini detailed answer with chat history; if it fails or disabled,
-		// fallback to a local structured mock to keep UX consistent.
+		// Concurrency guard + timeout for upstream
+		release := middleware.AcquireUserSlot(uidStr)
+		defer release()
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+		defer cancel()
+
+		// Cache lookup
 		botReply := ""
-		gsvc := svc.NewGeminiService()
-		if resp, err := gsvc.AskCampusWithChat(c.Request.Context(), history); err == nil {
-			if strings.TrimSpace(resp) != "" {
+		key := cache.KeyFromStrings("chat-final", uidStr, strings.ToLower(strings.TrimSpace(body.Message)))
+		if v, ok := cache.Default().Get(key); ok {
+			if s, ok2 := v.(string); ok2 && strings.TrimSpace(s) != "" {
+				botReply = s
+			}
+		}
+		if strings.TrimSpace(botReply) == "" {
+			if resp, err := svc.NewGeminiService().AskCampusWithChat(ctx, history); err == nil && strings.TrimSpace(resp) != "" {
 				botReply = resp
 			}
 		}
 		if strings.TrimSpace(botReply) == "" {
-			botReply = svc.AskCampusWithChatLocal(c.Request.Context(), history)
+			botReply = svc.AskCampusWithChatLocal(ctx, history)
 		}
-		msgBot := models.Message{
-			ConversationID: conv.ID,
-			Sender:         "bot",
-			Text:           botReply,
-			Timestamp:      time.Now(),
+		if strings.TrimSpace(botReply) != "" {
+			cache.Default().Set(key, botReply, time.Duration(config.ChatCacheTTLSeconds)*time.Second)
 		}
+
+		// Save bot message
+		msgBot := models.Message{ConversationID: conv.ID, Sender: "bot", Text: botReply, Timestamp: time.Now()}
 		if err := db.Create(&msgBot).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"msg": "failed to save bot reply"})
 			return
 		}
 
-		// reload conversation messages
+		// Reload conversation with messages
 		if err := db.Preload("Messages").First(&conv, conv.ID).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"msg": "failed to load messages"})
 			return
 		}
 
-		// map messages to response
+		// Map messages
 		var messages []gin.H
 		for _, m := range conv.Messages {
-			messages = append(messages, gin.H{
-				"id":        m.ID,
-				"sender":    m.Sender,
-				"text":      m.Text,
-				"timestamp": m.Timestamp,
-			})
+			messages = append(messages, gin.H{"id": m.ID, "sender": m.Sender, "text": m.Text, "timestamp": m.Timestamp})
 		}
 
-		c.JSON(http.StatusCreated, gin.H{
-			"conversation_id": conv.ID,
-			"messages":        messages,
-		})
+		c.JSON(http.StatusCreated, gin.H{"conversation_id": conv.ID, "messages": messages})
 	}
 }
 
@@ -152,6 +158,10 @@ func CreateOrAddMessageStream(db *gorm.DB) gin.HandlerFunc {
 		uidStr := userIDStr.(string)
 		uid, _ := strconv.Atoi(uidStr)
 
+		// Concurrency guard per user
+		release := middleware.AcquireUserSlot(uidStr)
+		defer release()
+
 		var body struct {
 			Message        string `json:"message"`
 			ConversationID *uint  `json:"conversation_id"`
@@ -159,6 +169,18 @@ func CreateOrAddMessageStream(db *gorm.DB) gin.HandlerFunc {
 		if err := c.ShouldBindJSON(&body); err != nil || strings.TrimSpace(body.Message) == "" {
 			c.Status(http.StatusBadRequest)
 			return
+		}
+
+		// Duplicate guard (after binding body) with bypass and cache-aware allowance
+		bypass := strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Bypass-Duplicate")), "1") ||
+			strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Bypass-Duplicate")), "true")
+		cacheKeyDup := cache.KeyFromStrings("chat-final", uidStr, strings.ToLower(strings.TrimSpace(body.Message)))
+		_, cacheHit := cache.Default().Get(cacheKeyDup)
+		if !bypass && !cacheHit {
+			if !middleware.DuplicateGuard(uidStr, body.Message) {
+				c.Status(http.StatusConflict)
+				return
+			}
 		}
 
 		// create or find conversation
@@ -221,9 +243,34 @@ func CreateOrAddMessageStream(db *gorm.DB) gin.HandlerFunc {
 			gotDelta = true
 		}
 
-		if _, err := gsvc.StreamCampusWithChat(c.Request.Context(), history, onDelta); err != nil {
-			// fallback to local streaming when Gemini fails (quota/overload/etc.)
-			svc.StreamCampusWithChatLocal(c.Request.Context(), history, onDelta)
+		// Context timeout to avoid hanging streams
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 75*time.Second)
+		defer cancel()
+
+		// Cache check first
+		cacheKey := cache.KeyFromStrings("chat-final", uidStr, strings.ToLower(strings.TrimSpace(body.Message)))
+		if v, ok := cache.Default().Get(cacheKey); ok {
+			if s, ok2 := v.(string); ok2 && s != "" {
+				// Stream cached text while PRESERVING whitespace and newlines
+				runes := []rune(s)
+				chunk := 28
+				for i := 0; i < len(runes); i += chunk {
+					end := i + chunk
+					if end > len(runes) {
+						end = len(runes)
+					}
+					onDelta(string(runes[i:end]))
+					time.Sleep(12 * time.Millisecond)
+				}
+				gotDelta = true
+			}
+		}
+
+		if !gotDelta {
+			if _, err := gsvc.StreamCampusWithChat(ctx, history, onDelta); err != nil {
+				// fallback to local streaming when Gemini fails (quota/overload/etc.)
+				svc.StreamCampusWithChatLocal(c.Request.Context(), history, onDelta)
+			}
 		}
 
 		// If no chunks were received from Gemini (empty or silent success), fall back to local mock
@@ -236,9 +283,12 @@ func CreateOrAddMessageStream(db *gorm.DB) gin.HandlerFunc {
 			botText = "Maaf, belum ada jawaban."
 		}
 
-		// persist bot message
+		// persist bot message (best-effort) and set cache
 		msgBot := models.Message{ConversationID: conv.ID, Sender: "bot", Text: botText, Timestamp: time.Now()}
 		_ = db.Create(&msgBot).Error
+		if botText != "" {
+			cache.Default().Set(cacheKey, botText, time.Duration(config.ChatCacheTTLSeconds)*time.Second)
+		}
 
 		// final done event
 		fmt.Fprintf(c.Writer, "event: done\n")
@@ -374,5 +424,27 @@ func DeleteConversation(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"msg": "conversation deleted"})
+	}
+}
+
+// DeleteAllConversations deletes all conversations for the authenticated user
+func DeleteAllConversations(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userIDStr, _ := c.Get(middleware.ContextUserIDKey)
+		uidStr := userIDStr.(string)
+		uid, _ := strconv.Atoi(uidStr)
+
+		// Use a transaction to safely delete user's conversations and cascading messages
+		if err := db.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Where("user_id = ?", uid).Delete(&models.Conversation{}).Error; err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"msg": "failed to delete all conversations"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"msg": "all conversations deleted"})
 	}
 }

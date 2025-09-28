@@ -1,10 +1,13 @@
 package controllers
 
 import (
+	"AkuAI/middleware"
 	"AkuAI/models"
+	"AkuAI/pkg/cache"
 	"AkuAI/pkg/config"
 	svc "AkuAI/pkg/services"
 	tokenstore "AkuAI/pkg/token"
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -89,12 +92,14 @@ func ChatWS(db *gorm.DB) gin.HandlerFunc {
 		}
 		defer conn.Close()
 
-		// Read exactly one start message for simplicity per connection
+		// Setup read limits and pong handler for keepalive
 		conn.SetReadLimit(1 << 20) // 1MB
-		if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
-			log.Printf("[ws] set read deadline: %v", err)
-		}
+		_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		conn.SetPongHandler(func(string) error {
+			return conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		})
 
+		// Read exactly one start message for simplicity per connection
 		_, msgBytes, err := conn.ReadMessage()
 		if err != nil {
 			log.Printf("[ws] read message error: %v", err)
@@ -128,6 +133,10 @@ func ChatWS(db *gorm.DB) gin.HandlerFunc {
 				return
 			}
 		}
+
+		// Concurrency guard per user
+		release := middleware.AcquireUserSlot(userIDStr)
+		defer release()
 
 		// Save user message
 		msgUser := models.Message{ConversationID: conv.ID, Sender: "user", Text: start.Message, Timestamp: time.Now()}
@@ -170,42 +179,145 @@ func ChatWS(db *gorm.DB) gin.HandlerFunc {
 			_ = conn.WriteJSON(gin.H{"type": "delta", "data": chunk})
 		}
 
-		// Try streaming first
-		if _, err := gsvc.StreamCampusWithChat(c.Request.Context(), history, func(s string) {
-			full.WriteString(s)
-			writeDelta(s)
-		}); err != nil {
-			log.Printf("[ws] stream failed: %v", err)
-			// fallback non-streaming
-			if resp, err2 := gsvc.AskCampusWithChat(c.Request.Context(), history); err2 == nil && strings.TrimSpace(resp) != "" {
-				full.WriteString(resp)
-				// simulate streaming by words
-				words := strings.Fields(resp)
-				for i, w := range words {
-					ch := w
-					if i < len(words)-1 {
-						ch += " "
-					}
-					writeDelta(ch)
-					time.Sleep(15 * time.Millisecond)
+		// Context timeout with cancel we can trigger on stop
+		parentCtx, cancelTimeout := context.WithTimeout(c.Request.Context(), 75*time.Second)
+		ctx, cancel := context.WithCancel(parentCtx)
+		defer func() {
+			cancel()
+			cancelTimeout()
+		}()
+
+		// Reader goroutine to listen for further messages like {type:"stop"}
+		stopCh := make(chan struct{})
+		readErrCh := make(chan error, 1)
+		go func() {
+			defer close(readErrCh)
+			for {
+				if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+					readErrCh <- err
+					return
 				}
-			} else {
-				// local fallback
-				svc.StreamCampusWithChatLocal(c.Request.Context(), history, func(s string) {
-					full.WriteString(s)
-					writeDelta(s)
-				})
+				mt, msg, err := conn.ReadMessage()
+				if err != nil {
+					readErrCh <- err
+					return
+				}
+				// Only handle text/binary frames with JSON
+				if mt != websocket.TextMessage && mt != websocket.BinaryMessage {
+					continue
+				}
+				var obj struct {
+					Type string `json:"type"`
+				}
+				_ = json.Unmarshal(msg, &obj)
+				if strings.ToLower(strings.TrimSpace(obj.Type)) == "stop" {
+					select {
+					case <-stopCh:
+						// already stopped
+					default:
+						close(stopCh)
+					}
+					return
+				}
 			}
+		}()
+
+		// helper to check if stopped without blocking
+		isStopped := func() bool {
+			select {
+			case <-stopCh:
+				return true
+			default:
+				return false
+			}
+		}
+
+		// Cache check first
+		ck := cache.KeyFromStrings("chat-final", userIDStr, strings.ToLower(strings.TrimSpace(start.Message)))
+		if v, ok := cache.Default().Get(ck); ok {
+			if s, ok2 := v.(string); ok2 && s != "" {
+				// Stream cached text while PRESERVING whitespace and newlines
+				runes := []rune(s)
+				chunk := 28
+				for i := 0; i < len(runes); i += chunk {
+					if isStopped() {
+						break
+					}
+					end := i + chunk
+					if end > len(runes) {
+						end = len(runes)
+					}
+					chunkText := string(runes[i:end])
+					full.WriteString(chunkText)
+					writeDelta(chunkText)
+					time.Sleep(12 * time.Millisecond)
+				}
+			}
+		}
+
+		// Try streaming first if not served from cache
+		if full.Len() == 0 && !isStopped() {
+			if _, err := gsvc.StreamCampusWithChat(ctx, history, func(s string) {
+				if isStopped() {
+					return
+				}
+				full.WriteString(s)
+				writeDelta(s)
+			}); err != nil && !isStopped() {
+				log.Printf("[ws] stream failed: %v", err)
+				// fallback non-streaming if not stopped
+				if resp, err2 := gsvc.AskCampusWithChat(ctx, history); err2 == nil && strings.TrimSpace(resp) != "" && !isStopped() {
+					full.WriteString(resp)
+					// Stream fallback response while preserving whitespace and newlines
+					runes := []rune(resp)
+					chunk := 28
+					for i := 0; i < len(runes); i += chunk {
+						if isStopped() {
+							break
+						}
+						end := i + chunk
+						if end > len(runes) {
+							end = len(runes)
+						}
+						chunkText := string(runes[i:end])
+						writeDelta(chunkText)
+						time.Sleep(15 * time.Millisecond)
+					}
+				} else if !isStopped() {
+					// local fallback
+					svc.StreamCampusWithChatLocal(ctx, history, func(s string) {
+						if isStopped() {
+							return
+						}
+						full.WriteString(s)
+						writeDelta(s)
+					})
+				}
+			}
+		}
+
+		// If stopped, cancel context to abort any in-flight calls
+		if isStopped() {
+			cancel()
 		}
 
 		botText := strings.TrimSpace(full.String())
 		if botText == "" {
 			botText = "Maaf, belum ada jawaban."
 		}
-		// persist bot message (best-effort)
+		// persist bot message (best-effort) and cache
 		_ = db.Create(&models.Message{ConversationID: conv.ID, Sender: "bot", Text: botText, Timestamp: time.Now()}).Error
+		if botText != "" {
+			cache.Default().Set(ck, botText, time.Duration(config.ChatCacheTTLSeconds)*time.Second)
+		}
 
-		// done
+		// Check if client signaled stop; respond accordingly
+		if isStopped() {
+			_ = conn.WriteJSON(gin.H{"type": "done", "ok": true, "stopped": true})
+			return
+		}
+
+		// done normally
 		_ = conn.WriteJSON(gin.H{"type": "done", "ok": true})
 	}
 }

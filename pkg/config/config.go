@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"slices"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -25,6 +26,14 @@ var (
 	// optional helper vars (dipakai di app)
 	JWTSecret string
 	Port      string
+
+	// runtime tunables
+	RateLimitWindowSeconds int
+	RateLimitCapacity      int
+	UserConcurrencyLimit   int
+	DuplicateWindowSeconds int
+	ChatCacheTTLSeconds    int
+	ChatCacheMaxItems      int
 )
 
 // loadAppEnv: hanya memuat .env jika bukan production.
@@ -83,6 +92,14 @@ func init() {
 		Port = "5000"
 	}
 
+	// Tunables with defaults
+	RateLimitWindowSeconds = atoiOr(os.Getenv("RATE_LIMIT_WINDOW_SECONDS"), 10)
+	RateLimitCapacity = atoiOr(os.Getenv("RATE_LIMIT_CAPACITY"), 5)
+	UserConcurrencyLimit = atoiOr(os.Getenv("USER_CONCURRENCY_LIMIT"), 2)
+	DuplicateWindowSeconds = atoiOr(os.Getenv("DUPLICATE_WINDOW_SECONDS"), 45)
+	ChatCacheTTLSeconds = atoiOr(os.Getenv("CHAT_CACHE_TTL_SECONDS"), 600)
+	ChatCacheMaxItems = atoiOr(os.Getenv("CHAT_CACHE_MAX_ITEMS"), 500)
+
 	// jika production dan JWT secret kosong -> fatal (safety)
 	if IsProduction && JWTSecret == "" {
 		log.Fatal("JWT_SECRET_KEY must be set in production")
@@ -92,4 +109,16 @@ func init() {
 	log.Printf("[config] AppEnv=%s IsStaging=%v IsProduction=%v", AppEnv, IsStaging, IsProduction)
 	log.Printf("[config] IsGeminiEnabled=%v GeminiAPIKeyPresent=%v", IsGeminiEnabled, GeminiAPIKey != "")
 	log.Printf("[config] GeminiModel=%s", GeminiModel)
+	log.Printf("[config] RateLimit window=%ds capacity=%d userConc=%d dupWindow=%ds cacheTTL=%ds cacheMax=%d",
+		RateLimitWindowSeconds, RateLimitCapacity, UserConcurrencyLimit, DuplicateWindowSeconds, ChatCacheTTLSeconds, ChatCacheMaxItems)
+}
+
+func atoiOr(s string, def int) int {
+	if s == "" {
+		return def
+	}
+	if v, err := strconv.Atoi(s); err == nil {
+		return v
+	}
+	return def
 }

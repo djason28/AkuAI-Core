@@ -25,8 +25,8 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 	// Public routes (no auth)
 	authRoutes.RegisterPublic(r, db)
 
-	// WebSocket chat (self-auth via token query)
-	r.GET("/ws/chat", controllers.ChatWS(db))
+	// WebSocket chat (self-auth via token query) with handshake rate limit
+	r.GET("/ws/chat", middleware.RateLimit(), controllers.ChatWS(db))
 
 	// Protected routes (memakai middleware AuthMiddleware)
 	protected := r.Group("/")

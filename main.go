@@ -1,6 +1,7 @@
 package main
 
 import (
+	"AkuAI/middleware"
 	"AkuAI/models"
 	"AkuAI/pkg/config"
 	"AkuAI/routes"
@@ -28,13 +29,17 @@ func main() {
 		log.Fatalf("failed migrate: %v", err)
 	}
 
+	// configure rate limiting and duplicate windows from config
+	middleware.SetRateLimitConfig(time.Duration(config.RateLimitWindowSeconds)*time.Second, config.RateLimitCapacity, config.UserConcurrencyLimit)
+	middleware.SetDuplicateTTL(time.Duration(config.DuplicateWindowSeconds) * time.Second)
+
 	r := gin.Default()
 
 	// CORS configuration
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://127.0.0.1:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-Bypass-Duplicate", "x-bypass-duplicate"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,

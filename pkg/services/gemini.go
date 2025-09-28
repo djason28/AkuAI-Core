@@ -125,7 +125,7 @@ func (s *GeminiService) AskCampusWithChat(ctx context.Context, chat []ChatMessag
 			"contents": contents,
 			"generationConfig": map[string]any{
 				"temperature":     0.6,
-				"maxOutputTokens": 1024,
+				"maxOutputTokens": 2048,
 				"topK":            40,
 				"topP":            0.9,
 			},
@@ -253,7 +253,7 @@ func (s *GeminiService) StreamCampusWithChat(ctx context.Context, chat []ChatMes
 			"contents": contents,
 			"generationConfig": map[string]any{
 				"temperature":     0.6,
-				"maxOutputTokens": 1024,
+				"maxOutputTokens": 2048,
 				"topK":            40,
 				"topP":            0.9,
 			},
