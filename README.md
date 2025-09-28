@@ -1,0 +1,1 @@
+CompileDaemon --build="go build -o .\bin\AkuAI.exe ." --command=".\\bin\\AkuAI.exe" --pattern="\.go$" --exclude-dir=bin,vendor

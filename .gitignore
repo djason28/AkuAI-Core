@@ -1,0 +1,45 @@
+# Go
+/bin/
+/bin
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Build/cache
+**/.cache/
+**/.idea/
+**/.vscode/
+
+# Go modules vendor (if used)
+/vendor/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Environment & secrets
+.env
+.env.*
+
+# Logs
+*.log
+logs/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+app.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Coverage
+coverage.out
