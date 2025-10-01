@@ -17,7 +17,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// Register handler
 func Register(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body struct {
@@ -46,7 +45,6 @@ func Register(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// password validation: at least one letter and one number
 		if !utils.HasLetter(password) || !utils.HasNumber(password) {
 			c.JSON(http.StatusBadRequest, gin.H{"msg": "Password must contain at least one letter and one number"})
 			return
@@ -78,7 +76,6 @@ func Register(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// Login handler
 func Login(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body struct {
@@ -108,7 +105,6 @@ func Login(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// create JWT with 1 day expiry
 		jti := uuid.NewString()
 		claims := jwt.MapClaims{
 			"sub": strconv.Itoa(int(user.ID)),
@@ -126,7 +122,6 @@ func Login(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// Logout handler
 func Logout() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		jti, _ := c.Get(middleware.ContextJTIKey)

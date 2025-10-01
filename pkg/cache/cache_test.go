@@ -9,18 +9,15 @@ func TestSetGetAndExpire(t *testing.T) {
 	c := Default()
 	key := KeyFromStrings("unit", "expire", time.Now().String())
 
-	// ensure no value
 	if _, ok := c.Get(key); ok {
 		t.Fatalf("expected no value initially")
 	}
 
-	// set with ttl
 	c.Set(key, "hello", 50*time.Millisecond)
 	if v, ok := c.Get(key); !ok || v.(string) != "hello" {
 		t.Fatalf("expected value 'hello', got %v ok=%v", v, ok)
 	}
 
-	// wait for expiry
 	time.Sleep(80 * time.Millisecond)
 	if _, ok := c.Get(key); ok {
 		t.Fatalf("expected expired value to be gone")

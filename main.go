@@ -5,39 +5,47 @@ import (
 	"AkuAI/models"
 	"AkuAI/pkg/config"
 	"AkuAI/routes"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 func main() {
-	// config init via package init()
-	// config.Load happens in init of pkg/config
+	log.Printf("Database Config - Host:%s Port:%s User:%s DB:%s",
+		config.MySQLHost, config.MySQLPort, config.MySQLUser, config.MySQLDatabase)
 
-	// init DB (sqlite in same folder)
-	db, err := gorm.Open(sqlite.Open("app.db"), &gorm.Config{})
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		config.MySQLUser,
+		config.MySQLPassword,
+		config.MySQLHost,
+		config.MySQLPort,
+		config.MySQLDatabase,
+	)
+
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("failed to connect database: %v", err)
+		log.Fatalf("failed to connect to MySQL database: %v", err)
 	}
 
-	// auto-migrate
+	log.Printf("Connected to MySQL database: %s@%s:%s/%s",
+		config.MySQLUser, config.MySQLHost, config.MySQLPort, config.MySQLDatabase)
+
 	if err := db.AutoMigrate(&models.User{}, &models.Conversation{}, &models.Message{}); err != nil {
 		log.Fatalf("failed migrate: %v", err)
 	}
 
-	// configure rate limiting and duplicate windows from config
 	middleware.SetRateLimitConfig(time.Duration(config.RateLimitWindowSeconds)*time.Second, config.RateLimitCapacity, config.UserConcurrencyLimit)
 	middleware.SetDuplicateTTL(time.Duration(config.DuplicateWindowSeconds) * time.Second)
 
 	r := gin.Default()
 
-	// CORS configuration
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://127.0.0.1:5173"},
+		AllowOrigins:     []string{"http://localhost:5173", "http://127.0.0.1:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-Bypass-Duplicate", "x-bypass-duplicate"},
 		ExposeHeaders:    []string{"Content-Length"},

@@ -7,9 +7,10 @@ import (
 
 type User struct {
 	gorm.Model
-	Email        string `gorm:"uniqueIndex;size:120;not null"`
-	Username     string `gorm:"uniqueIndex;size:80;not null"`
-	PasswordHash string `gorm:"size:255;not null"`
+	Email           string `gorm:"uniqueIndex;size:120;not null"`
+	Username        string `gorm:"uniqueIndex;size:80;not null"`
+	PasswordHash    string `gorm:"size:255;not null"`
+	ProfileImageURL string `gorm:"size:500"`
 }
 
 func (u *User) SetPassword(password string) error {

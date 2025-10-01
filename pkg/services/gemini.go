@@ -16,8 +16,6 @@ import (
 	"AkuAI/pkg/config"
 )
 
-// GeminiService forwards campus-only prompts to the Generative Language REST API.
-// It uses only the standard library and supports configurable model fallback.
 type GeminiService struct {
 	apiKey  string
 	enabled bool
@@ -34,15 +32,11 @@ func NewGeminiService() *GeminiService {
 	}
 }
 
-// ChatMessage is a minimal role/text pair for multi-turn chat history.
-// Role should be "user" for human messages and "model" for AI replies.
 type ChatMessage struct {
 	Role string
 	Text string
 }
 
-// AskCampus asks Gemini to answer only campus-related questions in Indonesian.
-// It tries the configured model first, then fallback models until one succeeds.
 func (s *GeminiService) AskCampus(ctx context.Context, question string) (string, error) {
 	if !s.enabled {
 		log.Printf("[gemini] disabled via config (IsGeminiEnabled=false)")
@@ -55,7 +49,6 @@ func (s *GeminiService) AskCampus(ctx context.Context, question string) (string,
 
 	prompt := fmt.Sprintf("Jawab secara rinci, terstruktur, dan mudah dipahami tentang informasi kampus. Gunakan Bahasa Indonesia yang jelas. Sertakan poin-poin penting, contoh jika relevan, dan langkah-langkah praktis. Jika ada ketidakpastian, sebutkan asumsi atau saran lanjutan. Pertanyaan: %s", question)
 
-	// Try configured model first, then fallbacks
 	models := []string{config.GeminiModel, "gemini-2.0-flash"}
 	tried := make(map[string]error)
 
@@ -90,8 +83,6 @@ func (s *GeminiService) AskCampus(ctx context.Context, question string) (string,
 	return "", errors.New(b.String())
 }
 
-// AskCampusWithChat uses multi-turn chat history and a detailed style instruction.
-// chat should contain prior turns in order, ending with the latest user message.
 func (s *GeminiService) AskCampusWithChat(ctx context.Context, chat []ChatMessage) (string, error) {
 	if !s.enabled {
 		log.Printf("[gemini] disabled via config (IsGeminiEnabled=false)")
@@ -118,7 +109,6 @@ func (s *GeminiService) AskCampusWithChat(ctx context.Context, chat []ChatMessag
 			})
 		}
 		reqBody := map[string]any{
-			// Encourage detailed, structured responses and keep focus on campus context.
 			"systemInstruction": map[string]any{
 				"parts": []any{map[string]any{"text": "Anda adalah asisten kampus yang sangat membantu. Jawab secara rinci, terstruktur (gunakan poin-poin atau langkah), dan jelas dalam Bahasa Indonesia. Jika konteks tidak cukup, minta klarifikasi singkat. Tetap fokus pada topik akademik/kampus."}},
 			},
@@ -164,8 +154,6 @@ func (s *GeminiService) AskCampusWithChat(ctx context.Context, chat []ChatMessag
 	return "", errors.New(b.String())
 }
 
-// StreamCampus streams a campus-only answer chunk-by-chunk via onDelta callback.
-// Returns the full accumulated text. If disabled, returns an error.
 func (s *GeminiService) StreamCampus(ctx context.Context, question string, onDelta func(string)) (string, error) {
 	if !s.enabled {
 		log.Printf("[gemini] disabled via config (IsGeminiEnabled=false)")
@@ -194,7 +182,6 @@ func (s *GeminiService) StreamCampus(ctx context.Context, question string, onDel
 			if strings.TrimSpace(text) != "" {
 				return strings.TrimSpace(text), nil
 			}
-			// Hybrid fallback: try non-streaming generate if stream yielded empty
 			if full, gerr := s.callGenerateContent(ctx, m, prompt); gerr == nil && strings.TrimSpace(full) != "" {
 				if onDelta != nil {
 					onDelta(full)
@@ -220,7 +207,6 @@ func (s *GeminiService) StreamCampus(ctx context.Context, question string, onDel
 	return "", errors.New(b.String())
 }
 
-// StreamCampusWithChat streams a detailed reply using multi-turn chat history.
 func (s *GeminiService) StreamCampusWithChat(ctx context.Context, chat []ChatMessage, onDelta func(string)) (string, error) {
 	if !s.enabled {
 		log.Printf("[gemini] disabled via config (IsGeminiEnabled=false)")
@@ -275,7 +261,6 @@ func (s *GeminiService) StreamCampusWithChat(ctx context.Context, chat []ChatMes
 			if strings.TrimSpace(text) != "" {
 				return strings.TrimSpace(text), nil
 			}
-			// Hybrid fallback: try non-streaming generate with same body when stream yielded empty
 			if full, gerr := s.callGenerateContentWithBody(ctx, m, bodyBytes); gerr == nil && strings.TrimSpace(full) != "" {
 				if onDelta != nil {
 					onDelta(full)
@@ -301,9 +286,7 @@ func (s *GeminiService) StreamCampusWithChat(ctx context.Context, chat []ChatMes
 	return "", errors.New(b.String())
 }
 
-// callGenerateContent performs a single v1beta generateContent call with the given model.
 func (s *GeminiService) callGenerateContent(ctx context.Context, model, prompt string) (string, error) {
-	// Request per https://ai.google.dev/api/rest/v1beta/models.generateContent
 	reqBody := map[string]any{
 		"contents": []any{
 			map[string]any{
@@ -320,7 +303,6 @@ func (s *GeminiService) callGenerateContent(ctx context.Context, model, prompt s
 	}
 	bodyBytes, _ := json.Marshal(reqBody)
 
-	// Use the provided model and include API key per REST API requirements
 	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", model, s.apiKey)
 	log.Printf("[gemini] using model %s", model)
 	log.Printf("[gemini] POST %s", url)
@@ -358,7 +340,7 @@ func (s *GeminiService) callGenerateContent(ctx context.Context, model, prompt s
 					for _, p := range parts {
 						if pm, ok := p.(map[string]any); ok {
 							if txt, ok := pm["text"].(string); ok && strings.TrimSpace(txt) != "" {
-								return strings.TrimSpace(txt), nil
+								return txt, nil
 							}
 						}
 					}
@@ -367,7 +349,7 @@ func (s *GeminiService) callGenerateContent(ctx context.Context, model, prompt s
 		}
 	}
 	if out, ok := parsed["output"].(string); ok && strings.TrimSpace(out) != "" {
-		return strings.TrimSpace(out), nil
+		return out, nil
 	}
 	if respObj, ok := parsed["response"].(map[string]any); ok {
 		if out, ok := respObj["output"].(string); ok && strings.TrimSpace(out) != "" {
@@ -377,9 +359,7 @@ func (s *GeminiService) callGenerateContent(ctx context.Context, model, prompt s
 	return strings.TrimSpace(string(respBytes)), nil
 }
 
-// callGenerateContentWithBody allows sending a pre-built JSON payload (for chat history/system prompts).
 func (s *GeminiService) callGenerateContentWithBody(ctx context.Context, model string, body []byte) (string, error) {
-	// Use the requested model and include API key
 	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", model, s.apiKey)
 	log.Printf("[gemini] using model %s", model)
 	log.Printf("[gemini] POST %s", url)
@@ -416,7 +396,7 @@ func (s *GeminiService) callGenerateContentWithBody(ctx context.Context, model s
 					for _, p := range parts {
 						if pm, ok := p.(map[string]any); ok {
 							if txt, ok := pm["text"].(string); ok && strings.TrimSpace(txt) != "" {
-								return strings.TrimSpace(txt), nil
+								return txt, nil
 							}
 						}
 					}
@@ -427,10 +407,7 @@ func (s *GeminiService) callGenerateContentWithBody(ctx context.Context, model s
 	return strings.TrimSpace(string(respBytes)), nil
 }
 
-// callStreamGenerateContent performs a single v1beta streamGenerateContent call
-// and invokes onDelta for each text delta. Returns the full accumulated text.
 func (s *GeminiService) callStreamGenerateContent(ctx context.Context, model, prompt string, onDelta func(string)) (string, error) {
-	// Build request payload
 	reqBody := map[string]any{
 		"contents": []any{
 			map[string]any{
@@ -474,20 +451,17 @@ func (s *GeminiService) callStreamGenerateContent(ctx context.Context, model, pr
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, 1024*1024)
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
+		line := scanner.Text()
+		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		// Some servers send lines prefixed with 'data: '
-		if strings.HasPrefix(strings.ToLower(line), "data:") {
+		if strings.HasPrefix(strings.ToLower(strings.TrimSpace(line)), "data:") {
 			line = strings.TrimSpace(line[5:])
 		}
 		var obj map[string]any
 		if err := json.Unmarshal([]byte(line), &obj); err != nil {
-			// Not a full JSON line; skip silently
 			continue
 		}
-		// Extract any text parts in this chunk
 		if cands, ok := obj["candidates"].([]any); ok && len(cands) > 0 {
 			if first, ok := cands[0].(map[string]any); ok {
 				if content, ok := first["content"].(map[string]any); ok {
@@ -513,7 +487,6 @@ func (s *GeminiService) callStreamGenerateContent(ctx context.Context, model, pr
 	return full.String(), nil
 }
 
-// callStreamGenerateContentWithBody streams with a custom JSON body (chat history/system prompt).
 func (s *GeminiService) callStreamGenerateContentWithBody(ctx context.Context, model string, body []byte, onDelta func(string)) (string, error) {
 	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent?key=%s", model, s.apiKey)
 	log.Printf("[gemini] streaming model %s", model)
@@ -542,11 +515,11 @@ func (s *GeminiService) callStreamGenerateContentWithBody(ctx context.Context, m
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, 1024*1024)
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
+		line := scanner.Text()
+		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		if strings.HasPrefix(strings.ToLower(line), "data:") {
+		if strings.HasPrefix(strings.ToLower(strings.TrimSpace(line)), "data:") {
 			line = strings.TrimSpace(line[5:])
 		}
 		var obj map[string]any
@@ -578,7 +551,6 @@ func (s *GeminiService) callStreamGenerateContentWithBody(ctx context.Context, m
 	return full.String(), nil
 }
 
-// isRetriable returns true for transient/quota errors where a brief retry may help.
 func isRetriable(err error) bool {
 	if err == nil {
 		return false
@@ -593,7 +565,6 @@ func isRetriable(err error) bool {
 	return false
 }
 
-// sleepWithContext pauses for d or returns early if the context is canceled.
 func sleepWithContext(ctx context.Context, d time.Duration) {
 	t := time.NewTimer(d)
 	defer t.Stop()

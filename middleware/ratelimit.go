@@ -11,7 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Simple token-bucket limiter per key (user+ip) with sliding window refill.
 type bucket struct {
 	tokens     int
 	lastRefill time.Time
@@ -22,9 +21,8 @@ var (
 	buckets     = map[string]*bucket{}
 	window      = 10 * time.Second
 	capacity    = 5
-	refillPerWd = capacity // refill full window
+	refillPerWd = capacity
 
-	// duplicate detection: last message per user with TTL
 	dupMu   sync.Mutex
 	lastMsg = map[string]struct {
 		text string
@@ -32,13 +30,11 @@ var (
 	}{}
 	dupTTL = 45 * time.Second
 
-	// user concurrency guard
 	cgMu     sync.Mutex
 	userSem  = map[string]chan struct{}{}
 	userConc = 2
 )
 
-// SetRateLimitConfig allows overriding defaults (optional use from config).
 func SetRateLimitConfig(win time.Duration, cap, conc int) {
 	rlMu.Lock()
 	window = win
@@ -50,7 +46,6 @@ func SetRateLimitConfig(win time.Duration, cap, conc int) {
 	cgMu.Unlock()
 }
 
-// SetDuplicateTTL allows overriding duplicate detection window.
 func SetDuplicateTTL(ttl time.Duration) {
 	dupMu.Lock()
 	dupTTL = ttl
@@ -72,7 +67,6 @@ func userKey(c *gin.Context) string {
 	return uid + "@" + clientIP(c)
 }
 
-// RateLimit middleware returns 429 when exceeding tokens within window.
 func RateLimit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := userKey(c)
@@ -84,7 +78,6 @@ func RateLimit() gin.HandlerFunc {
 			b = &bucket{tokens: capacity, lastRefill: now}
 			buckets[key] = b
 		}
-		// refill proportionally
 		elapsed := now.Sub(b.lastRefill)
 		if elapsed > 0 {
 			add := int(float64(refillPerWd) * (float64(elapsed) / float64(window)))
@@ -109,8 +102,6 @@ func RateLimit() gin.HandlerFunc {
 	}
 }
 
-// DuplicateGuard blocks identical messages within dupTTL (to avoid spam replays).
-// Use in controllers before expensive upstream calls.
 func DuplicateGuard(uid string, text string) bool {
 	now := time.Now()
 	k := uid
@@ -118,7 +109,7 @@ func DuplicateGuard(uid string, text string) bool {
 	entry, ok := lastMsg[k]
 	if ok && entry.text == strings.TrimSpace(text) && now.Sub(entry.ts) < dupTTL {
 		dupMu.Unlock()
-		return false // duplicate
+		return false
 	}
 	lastMsg[k] = struct {
 		text string
@@ -128,7 +119,6 @@ func DuplicateGuard(uid string, text string) bool {
 	return true
 }
 
-// AcquireUserSlot gets a concurrency slot for user; must call release() when done.
 func AcquireUserSlot(uid string) (release func()) {
 	cgMu.Lock()
 	sem := userSem[uid]

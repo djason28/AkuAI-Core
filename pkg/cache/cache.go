@@ -1,77 +1,71 @@
 package cache
 
 import (
-	"container/list"
+	"encoding/hex"
 	"hash/fnv"
+	"log"
 	"sync"
 	"time"
 )
 
-// Item represents a cached value with expiration time.
+type ResponseStatus string
+
+const (
+	StatusCompleted ResponseStatus = "completed"
+	StatusCanceled  ResponseStatus = "canceled"
+	StatusError     ResponseStatus = "error"
+	StatusPending   ResponseStatus = "pending"
+)
+
+type CachedResponse struct {
+	Text     string         `json:"text"`
+	Status   ResponseStatus `json:"status"`
+	CachedAt time.Time      `json:"cached_at"`
+}
+
 type Item struct {
 	V   any
-	Exp int64 // unix seconds; 0 = no expiry
+	Exp int64
 }
 
-// Cache is a simple in-memory TTL cache safe for concurrent use.
 type Cache struct {
-	mu       sync.RWMutex
-	items    map[string]*entry
-	order    *list.List       // MRU at front, LRU at back
-	maxItems int              // 0 = unlimited
-}
-
-type entry struct {
-	key  string
-	item Item
-	elem *list.Element
+	mu    sync.RWMutex
+	items map[string]Item
 }
 
 var (
 	defaultCache *Cache
 	once         sync.Once
-	defaultMax   = 500
 )
 
-// Default returns a process-wide cache instance.
 func Default() *Cache {
 	once.Do(func() {
-		defaultCache = &Cache{items: make(map[string]*entry), order: list.New(), maxItems: defaultMax}
-		// start janitor
+		defaultCache = &Cache{items: make(map[string]Item)}
 		go defaultCache.janitor(60 * time.Second)
 	})
 	return defaultCache
 }
 
-// Get returns value and whether it exists and not expired.
 func (c *Cache) Get(key string) (any, bool) {
 	if c == nil {
 		return nil, false
 	}
 	now := time.Now().Unix()
 	c.mu.RLock()
-	e, ok := c.items[key]
+	it, ok := c.items[key]
 	c.mu.RUnlock()
 	if !ok {
 		return nil, false
 	}
-	if e.item.Exp != 0 && e.item.Exp < now {
-		// lazy delete
+	if it.Exp != 0 && it.Exp < now {
 		c.mu.Lock()
-		c.removeNoLock(key)
+		delete(c.items, key)
 		c.mu.Unlock()
 		return nil, false
 	}
-	// move to front (MRU)
-	c.mu.Lock()
-	if e.elem != nil {
-		c.order.MoveToFront(e.elem)
-	}
-	c.mu.Unlock()
-	return e.item.V, true
+	return it.V, true
 }
 
-// Set sets a value with TTL. ttl<=0 means no expiry.
 func (c *Cache) Set(key string, v any, ttl time.Duration) {
 	if c == nil {
 		return
@@ -81,50 +75,34 @@ func (c *Cache) Set(key string, v any, ttl time.Duration) {
 		exp = time.Now().Add(ttl).Unix()
 	}
 	c.mu.Lock()
-	if e, ok := c.items[key]; ok {
-		e.item = Item{V: v, Exp: exp}
-		if e.elem != nil {
-			c.order.MoveToFront(e.elem)
-		}
-	} else {
-		e := &entry{key: key, item: Item{V: v, Exp: exp}}
-		e.elem = c.order.PushFront(e)
-		c.items[key] = e
-		// enforce capacity
-		if c.maxItems > 0 && c.order.Len() > c.maxItems {
-			c.evictLRUNoLock()
-		}
-	}
+	c.items[key] = Item{V: v, Exp: exp}
 	c.mu.Unlock()
 }
 
-// Delete removes a key.
 func (c *Cache) Delete(key string) {
 	if c == nil {
 		return
 	}
 	c.mu.Lock()
-	c.removeNoLock(key)
+	delete(c.items, key)
 	c.mu.Unlock()
 }
 
-// janitor periodically removes expired items.
 func (c *Cache) janitor(interval time.Duration) {
 	t := time.NewTicker(interval)
 	defer t.Stop()
 	for range t.C {
 		now := time.Now().Unix()
 		c.mu.Lock()
-		for k, e := range c.items {
-			if e.item.Exp != 0 && e.item.Exp < now {
-				c.removeNoLock(k)
+		for k, it := range c.items {
+			if it.Exp != 0 && it.Exp < now {
+				delete(c.items, k)
 			}
 		}
 		c.mu.Unlock()
 	}
 }
 
-// KeyFromStrings creates a compact stable key from parts.
 func KeyFromStrings(parts ...string) string {
 	h := fnv.New64a()
 	for _, p := range parts {
@@ -134,42 +112,67 @@ func KeyFromStrings(parts ...string) string {
 	return string(h.Sum(nil))
 }
 
-// SetMaxItems updates capacity for the default cache. Safe to call at startup.
-func SetMaxItems(n int) {
-	if n <= 0 {
-		n = 0 // unlimited
-	}
-	c := Default()
-	c.mu.Lock()
-	c.maxItems = n
-	// Trim if needed
-	for c.maxItems > 0 && c.order.Len() > c.maxItems {
-		c.evictLRUNoLock()
-	}
-	c.mu.Unlock()
-}
-
-// removeNoLock removes key from map/list; caller must hold c.mu.
-func (c *Cache) removeNoLock(key string) {
-	if e, ok := c.items[key]; ok {
-		if e.elem != nil {
-			c.order.Remove(e.elem)
+func (c *Cache) SetChatResponse(key string, text string, status ResponseStatus, ttl time.Duration) {
+	if status == StatusCompleted && text != "" && text != "Maaf, belum ada jawaban." {
+		response := CachedResponse{
+			Text:     text,
+			Status:   status,
+			CachedAt: time.Now(),
 		}
-		delete(c.items, key)
+		c.Set(key, response, ttl)
+		log.Printf("[cache] Cache SAVED: key=%s, status=%s, text_length=%d, ttl=%v",
+			shortenKey(key), status, len(text), ttl)
+	} else {
+		log.Printf("[cache] Cache SKIPPED: key=%s, status=%s, text_length=%d (not caching incomplete/error responses)",
+			shortenKey(key), status, len(text))
 	}
 }
 
-// evictLRUNoLock removes one LRU entry; caller must hold c.mu.
-func (c *Cache) evictLRUNoLock() {
-	back := c.order.Back()
-	if back == nil {
-		return
+func (c *Cache) GetChatResponse(key string) (string, bool) {
+	text, found, _ := c.GetChatResponseWithInfo(key)
+	return text, found
+}
+
+func (c *Cache) GetChatResponseWithInfo(key string) (string, bool, *CachedResponse) {
+	v, ok := c.Get(key)
+	if !ok {
+		return "", false, nil
 	}
-	if e, ok := back.Value.(*entry); ok {
-		c.order.Remove(back)
-		delete(c.items, e.key)
-	} else {
-		// fallback safety: remove the element regardless
-		c.order.Remove(back)
+
+	switch resp := v.(type) {
+	case string:
+		if resp != "" && resp != "Maaf, belum ada jawaban." {
+			log.Printf("[cache] Cache HIT (legacy format): key=%s, text_length=%d", shortenKey(key), len(resp))
+			return resp, true, &CachedResponse{
+				Text:     resp,
+				Status:   StatusCompleted,
+				CachedAt: time.Now(),
+			}
+		}
+		return "", false, nil
+	case CachedResponse:
+		if resp.Status == StatusCompleted && resp.Text != "" && resp.Text != "Maaf, belum ada jawaban." {
+			log.Printf("[cache] Cache HIT: key=%s, status=%s, text_length=%d, cached_at=%s",
+				shortenKey(key), resp.Status, len(resp.Text), resp.CachedAt.Format("15:04:05"))
+			return resp.Text, true, &resp
+		}
+		return "", false, nil
+	default:
+		return "", false, nil
 	}
+}
+
+func shortenKey(key string) string {
+	hexKey := hex.EncodeToString([]byte(key))
+	if len(hexKey) <= 16 {
+		return hexKey
+	}
+	return hexKey[:8] + "..." + hexKey[len(hexKey)-8:]
+}
+
+func (c *Cache) InvalidateChatResponse(key string) {
+	if _, exists := c.Get(key); exists {
+		log.Printf("[cache] Cache INVALIDATED: key=%s (canceled/failed request)", shortenKey(key))
+	}
+	c.Delete(key)
 }

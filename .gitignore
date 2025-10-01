@@ -37,6 +37,10 @@ logs/
 *.sqlite3
 app.db
 
+# Upload folders
+/uploads/
+uploads/
+
 # Temporary files
 *.tmp
 *.temp

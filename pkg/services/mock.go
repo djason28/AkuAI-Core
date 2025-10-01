@@ -8,9 +8,6 @@ import (
 	"time"
 )
 
-// Local mock that produces a structured Indonesian answer, useful when Gemini is unavailable/quotaed.
-
-// AskCampusWithChatLocal returns a deterministic, structured response based on the latest user message.
 func AskCampusWithChatLocal(ctx context.Context, chat []ChatMessage) string {
 	var last string
 	if len(chat) > 0 {
@@ -19,7 +16,6 @@ func AskCampusWithChatLocal(ctx context.Context, chat []ChatMessage) string {
 	if last == "" {
 		last = "pertanyaan Anda"
 	}
-	// Simple template with tips and follow-ups
 	b := &strings.Builder{}
 	fmt.Fprintf(b, "Ringkasan jawaban untuk: %s\n\n", last)
 	fmt.Fprintln(b, "Rangkuman:")
@@ -38,17 +34,14 @@ func AskCampusWithChatLocal(ctx context.Context, chat []ChatMessage) string {
 	return b.String()
 }
 
-// StreamCampusWithChatLocal streams a mock answer gradually via onDelta.
 func StreamCampusWithChatLocal(ctx context.Context, chat []ChatMessage, onDelta func(string)) string {
 	full := AskCampusWithChatLocal(ctx, chat)
-	// Stream in small chunks to simulate typing
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	i := 0
 	for i < len(full) {
 		if ctx.Err() != nil {
 			break
 		}
-		// chunk size 16-48 chars
 		step := 16 + r.Intn(32)
 		if i+step > len(full) {
 			step = len(full) - i

@@ -31,7 +31,6 @@ func AuthMiddleware() gin.HandlerFunc {
 		tokenStr := parts[1]
 
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-			// only accept HMAC signing
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, jwt.ErrTokenUnverifiable
 			}
@@ -48,19 +47,16 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// jti
 		jtiVal, _ := claims["jti"].(string)
 		if tokenstore.IsRevoked(jtiVal) {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"msg": "Token has been revoked (logout)"})
 			return
 		}
 
-		// subject (user id)
 		var userIDStr string
 		if sub, ok := claims["sub"].(string); ok {
 			userIDStr = sub
 		} else if subf, ok := claims["sub"].(float64); ok {
-			// jwt lib may parse numeric as float64
 			userIDStr = strconv.Itoa(int(subf))
 		}
 
@@ -69,7 +65,6 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// set to context
 		c.Set(ContextUserIDKey, userIDStr)
 		c.Set(ContextJTIKey, jtiVal)
 		c.Next()

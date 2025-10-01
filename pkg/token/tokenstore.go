@@ -2,7 +2,6 @@ package tokenstore
 
 import "sync"
 
-// in-memory token revocation store. For production use Redis or DB.
 var (
 	mu            sync.RWMutex
 	revokedTokens = map[string]struct{}{}
