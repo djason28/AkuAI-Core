@@ -9,6 +9,7 @@ import (
 
 	authRoutes "AkuAI/routes/auth"
 	convRoutes "AkuAI/routes/conversation"
+	imageRoutes "AkuAI/routes/images"
 	profileRoutes "AkuAI/routes/profile"
 	uibRoutes "AkuAI/routes/uib"
 	uploadsRoutes "AkuAI/routes/uploads"
@@ -32,4 +33,7 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 
 	// UIB routes - accessible to all authenticated users
 	uibRoutes.Register(protected, db)
+
+	// Image search routes - accessible to all authenticated users
+	imageRoutes.Register(protected, db)
 }

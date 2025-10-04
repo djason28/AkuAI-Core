@@ -10,14 +10,15 @@ import (
 )
 
 var (
-	GeminiAPIKey    string
-	GeminiModel     string
-	GoogleAPIKey    string
-	GoogleAPI_CX    string
-	AppEnv          string
-	IsStaging       bool
-	IsProduction    bool
-	IsGeminiEnabled bool
+	GeminiAPIKey       string
+	GeminiModel        string
+	GoogleAPIKey       string
+	GoogleAPI_CX       string
+	AppEnv             string
+	IsStaging          bool
+	IsProduction       bool
+	IsGeminiEnabled    bool
+	IsGoogleAPIEnabled bool
 
 	JWTSecret string
 	Port      string
@@ -71,6 +72,7 @@ func init() {
 	IsProduction = AppEnv == "production"
 
 	IsGeminiEnabled = os.Getenv("IS_GEMINI_ENABLED") == "1"
+	IsGoogleAPIEnabled = os.Getenv("IS_GOOGLEAPI_ENABLED") == "1"
 
 	if GeminiModel == "" {
 		GeminiModel = "gemini-2.0-flash"

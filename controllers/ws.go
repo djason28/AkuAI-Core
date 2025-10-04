@@ -33,6 +33,7 @@ type wsStartPayload struct {
 	Type           string `json:"type"`
 	Message        string `json:"message"`
 	ConversationID *uint  `json:"conversation_id"`
+	RequestImages  bool   `json:"request_images,omitempty"`
 }
 
 func ChatWS(db *gorm.DB) gin.HandlerFunc {
@@ -299,6 +300,29 @@ func ChatWS(db *gorm.DB) gin.HandlerFunc {
 		} else {
 			_ = db.Create(&models.Message{ConversationID: conv.ID, Sender: "bot", Text: botText, Timestamp: time.Now()}).Error
 			cache.Default().SetChatResponse(ck, botText, cache.StatusCompleted, time.Duration(config.ChatCacheTTLSeconds)*time.Second)
+		}
+
+		// Handle image search if requested
+		if start.RequestImages {
+			_ = conn.WriteJSON(gin.H{"type": "images_searching", "message": "Mencari gambar yang relevan..."})
+
+			imageService := svc.NewGoogleImageService()
+			if imageService.IsEnabled() {
+				searchCtx, searchCancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer searchCancel()
+
+				// Search for images based on the message context
+				images, err := imageService.SearchImagesForChat(searchCtx, start.Message)
+				if err != nil {
+					_ = conn.WriteJSON(gin.H{"type": "images_error", "error": "Gagal mencari gambar: " + err.Error()})
+				} else if len(images) > 0 {
+					_ = conn.WriteJSON(gin.H{"type": "images_found", "images": images, "count": len(images)})
+				} else {
+					_ = conn.WriteJSON(gin.H{"type": "images_empty", "message": "Tidak ada gambar yang ditemukan"})
+				}
+			} else {
+				_ = conn.WriteJSON(gin.H{"type": "images_disabled", "message": "Fitur pencarian gambar belum dikonfigurasi"})
+			}
 		}
 
 		_ = conn.WriteJSON(gin.H{"type": "done", "ok": true})

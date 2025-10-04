@@ -7,6 +7,7 @@ import (
 	"AkuAI/pkg/config"
 	svc "AkuAI/pkg/services"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -28,6 +29,7 @@ func CreateOrAddMessage(db *gorm.DB) gin.HandlerFunc {
 		var body struct {
 			Message        string `json:"message"`
 			ConversationID *uint  `json:"conversation_id"`
+			RequestImages  bool   `json:"request_images"`
 		}
 		if err := c.ShouldBindJSON(&body); err != nil || strings.TrimSpace(body.Message) == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"msg": "message is required"})
@@ -172,6 +174,7 @@ func CreateOrAddMessageStream(db *gorm.DB) gin.HandlerFunc {
 		var body struct {
 			Message        string `json:"message"`
 			ConversationID *uint  `json:"conversation_id"`
+			RequestImages  bool   `json:"request_images"`
 		}
 		if err := c.ShouldBindJSON(&body); err != nil || strings.TrimSpace(body.Message) == "" {
 			c.Status(http.StatusBadRequest)
@@ -296,6 +299,41 @@ func CreateOrAddMessageStream(db *gorm.DB) gin.HandlerFunc {
 			msgBot := models.Message{ConversationID: conv.ID, Sender: "bot", Text: botText, Timestamp: time.Now()}
 			_ = db.Create(&msgBot).Error
 			cache.Default().SetChatResponse(cacheKey, botText, cache.StatusCompleted, time.Duration(config.ChatCacheTTLSeconds)*time.Second)
+		}
+
+		// Handle image search if requested
+		if body.RequestImages {
+			fmt.Fprintf(c.Writer, "event: images_searching\n")
+			fmt.Fprintf(c.Writer, "data: {\"message\": \"Mencari gambar Universitas International Batam...\"}\n\n")
+			flusher.Flush()
+
+			// Use Google Images API with UIB-specific search
+			googleImageService := svc.NewGoogleImageService()
+			if googleImageService.IsEnabled() {
+				searchCtx, searchCancel := context.WithTimeout(ctx, 30*time.Second)
+				defer searchCancel()
+
+				// Search for UIB images using Google API
+				images, err := googleImageService.SearchImagesForChat(searchCtx, body.Message)
+				if err != nil {
+					fmt.Fprintf(c.Writer, "event: images_error\n")
+					fmt.Fprintf(c.Writer, "data: {\"error\": \"Gagal mencari gambar UIB: %s\"}\n\n", strings.ReplaceAll(err.Error(), `"`, `\"`))
+					flusher.Flush()
+				} else if len(images) > 0 {
+					imagesJSON, _ := json.Marshal(images)
+					fmt.Fprintf(c.Writer, "event: images_found\n")
+					fmt.Fprintf(c.Writer, "data: {\"images\": %s, \"count\": %d}\n\n", string(imagesJSON), len(images))
+					flusher.Flush()
+				} else {
+					fmt.Fprintf(c.Writer, "event: images_empty\n")
+					fmt.Fprintf(c.Writer, "data: {\"message\": \"Tidak ada gambar UIB yang ditemukan\"}\n\n")
+					flusher.Flush()
+				}
+			} else {
+				fmt.Fprintf(c.Writer, "event: images_disabled\n")
+				fmt.Fprintf(c.Writer, "data: {\"message\": \"Fitur pencarian gambar belum dikonfigurasi\"}\n\n")
+				flusher.Flush()
+			}
 		}
 
 		fmt.Fprintf(c.Writer, "event: done\n")

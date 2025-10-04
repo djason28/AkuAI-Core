@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -257,17 +258,34 @@ func (s *UIBEventService) FormatEventsForGemini(events []models.UIBEvent) string
 	return formatted.String()
 }
 
-// AnalyzeQueryForUIB analyzes if a query is related to UIB
+// AnalyzeQueryForUIB analyzes if a query is related to UIB EVENTS/ACTIVITIES (not general info like jurusan)
 func (s *UIBEventService) AnalyzeQueryForUIB(query string) bool {
-	uibKeywords := []string{
-		"uib", "universitas internasional batam", "batam",
+	queryLower := strings.ToLower(query)
+
+	// If query is about jurusan/fakultas/program studi, use pure Gemini instead
+	jurusanKeywords := []string{
+		"jurusan", "fakultas", "program studi", "prodi",
+		"teknik informatika", "sistem informasi", "manajemen",
+		"akuntansi", "hukum", "psikologi", "komunikasi",
+		"apa saja jurusan", "daftar jurusan", "berikan jurusan",
+	}
+
+	for _, keyword := range jurusanKeywords {
+		if strings.Contains(queryLower, keyword) {
+			log.Printf("[uib-service] 🎓 Jurusan query detected - using pure Gemini: %s", query)
+			return false // Use pure Gemini for academic program info
+		}
+	}
+
+	// Only detect UIB for specific events/activities
+	uibEventKeywords := []string{
 		"sertifikasi uib", "webinar uib", "acara uib",
 		"oktober uib", "november uib", "desember uib",
 		"pendaftaran uib", "event uib", "kegiatan uib",
+		"seminar uib", "workshop uib", "pelatihan uib",
 	}
 
-	queryLower := strings.ToLower(query)
-	for _, keyword := range uibKeywords {
+	for _, keyword := range uibEventKeywords {
 		if strings.Contains(queryLower, keyword) {
 			return true
 		}

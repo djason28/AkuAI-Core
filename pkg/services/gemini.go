@@ -53,6 +53,11 @@ type ChatMessage struct {
 }
 
 func (s *GeminiService) AskCampus(ctx context.Context, question string) (string, error) {
+	// Mock logic: always mock if staging, or if production but disabled
+	if config.IsStaging || (config.IsProduction && !config.IsGeminiEnabled) {
+		log.Printf("[gemini] MOCK MODE: returning mock chat response")
+		return "[MOCK] Halo! Ini adalah jawaban mock dari Gemini. Silakan tanya apa saja tentang UIB.", nil
+	}
 	if !s.enabled {
 		log.Printf("[gemini] disabled via config (IsGeminiEnabled=false)")
 		return "", ErrGeminiDisabled
