@@ -10,6 +10,7 @@ import (
 	authRoutes "AkuAI/routes/auth"
 	convRoutes "AkuAI/routes/conversation"
 	profileRoutes "AkuAI/routes/profile"
+	uibRoutes "AkuAI/routes/uib"
 	uploadsRoutes "AkuAI/routes/uploads"
 	websocketRoutes "AkuAI/routes/websocket"
 )
@@ -28,4 +29,7 @@ func RegisterRoutes(r *gin.Engine, db *gorm.DB) {
 	authRoutes.RegisterProtected(protected, db)
 	profileRoutes.Register(protected, db)
 	convRoutes.Register(protected, db)
+
+	// UIB routes - accessible to all authenticated users
+	uibRoutes.Register(protected, db)
 }

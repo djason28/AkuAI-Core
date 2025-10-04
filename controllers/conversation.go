@@ -89,7 +89,18 @@ func CreateOrAddMessage(db *gorm.DB) gin.HandlerFunc {
 		defer cancel()
 
 		botReply := ""
-		key := cache.KeyFromStrings("chat-final", uidStr, strings.ToLower(strings.TrimSpace(body.Message)))
+		// Create cache key - add UIB indicator for better cache management
+		cachePrefix := "chat-final"
+		message := strings.ToLower(strings.TrimSpace(body.Message))
+
+		// Check if this is UIB-related for cache key differentiation
+		geminiService := svc.NewGeminiService()
+		if geminiService != nil {
+			// Add version identifier to ensure new UIB logic is used
+			cachePrefix = "chat-uib-v2"
+		}
+
+		key := cache.KeyFromStrings(cachePrefix, uidStr, message)
 		if cachedText, ok, cacheInfo := cache.Default().GetChatResponseWithInfo(key); ok {
 			botReply = cachedText
 			log.Printf("[conversation] 🟢 SERVING FROM CACHE - User: %s, Message: %.50s..., Cache Age: %v",
@@ -97,8 +108,18 @@ func CreateOrAddMessage(db *gorm.DB) gin.HandlerFunc {
 		}
 		if strings.TrimSpace(botReply) == "" {
 			log.Printf("[conversation] 🔵 GENERATING NEW RESPONSE - User: %s, Message: %.50s...", uidStr, body.Message)
-			if resp, err := svc.NewGeminiService().AskCampusWithChat(ctx, history); err == nil && strings.TrimSpace(resp) != "" {
+
+			// Try UIB-enhanced method first for better UIB-related responses
+			if resp, err := geminiService.AskCampusWithUIBContext(ctx, history); err == nil && strings.TrimSpace(resp) != "" {
 				botReply = resp
+				log.Printf("[conversation] ✅ UIB-enhanced response generated successfully")
+			} else {
+				// Fallback to regular method
+				log.Printf("[conversation] ⚠️ UIB-enhanced failed (%v), trying regular method", err)
+				if resp, err := geminiService.AskCampusWithChat(ctx, history); err == nil && strings.TrimSpace(resp) != "" {
+					botReply = resp
+					log.Printf("[conversation] ✅ Regular response generated successfully")
+				}
 			}
 		}
 		if strings.TrimSpace(botReply) == "" {
@@ -159,7 +180,7 @@ func CreateOrAddMessageStream(db *gorm.DB) gin.HandlerFunc {
 
 		bypass := strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Bypass-Duplicate")), "1") ||
 			strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Bypass-Duplicate")), "true")
-		cacheKeyDup := cache.KeyFromStrings("chat-final", uidStr, strings.ToLower(strings.TrimSpace(body.Message)))
+		cacheKeyDup := cache.KeyFromStrings("chat-uib-v2", uidStr, strings.ToLower(strings.TrimSpace(body.Message)))
 		_, cacheHit := cache.Default().GetChatResponse(cacheKeyDup)
 		if !bypass && !cacheHit {
 			if !middleware.DuplicateGuard(uidStr, body.Message) {
@@ -225,7 +246,7 @@ func CreateOrAddMessageStream(db *gorm.DB) gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 75*time.Second)
 		defer cancel()
 
-		cacheKey := cache.KeyFromStrings("chat-final", uidStr, strings.ToLower(strings.TrimSpace(body.Message)))
+		cacheKey := cache.KeyFromStrings("chat-uib-v2", uidStr, strings.ToLower(strings.TrimSpace(body.Message)))
 		if v, ok := cache.Default().Get(cacheKey); ok {
 			if s, ok2 := v.(string); ok2 && s != "" {
 				runes := []rune(s)
@@ -243,7 +264,21 @@ func CreateOrAddMessageStream(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		if !gotDelta {
-			if _, err := gsvc.StreamCampusWithChat(ctx, history, onDelta); err != nil {
+			// Use UIB-enhanced method instead of regular StreamCampusWithChat
+			if response, err := gsvc.AskCampusWithUIBContext(ctx, history); err == nil && response != "" {
+				// Simulate streaming for UIB response
+				runes := []rune(response)
+				chunk := 28
+				for i := 0; i < len(runes); i += chunk {
+					end := i + chunk
+					if end > len(runes) {
+						end = len(runes)
+					}
+					onDelta(string(runes[i:end]))
+					time.Sleep(12 * time.Millisecond)
+				}
+				gotDelta = true
+			} else {
 				svc.StreamCampusWithChatLocal(c.Request.Context(), history, onDelta)
 			}
 		}

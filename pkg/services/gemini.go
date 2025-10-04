@@ -17,8 +17,9 @@ import (
 )
 
 type GeminiService struct {
-	apiKey  string
-	enabled bool
+	apiKey     string
+	enabled    bool
+	uibService *UIBEventService
 }
 
 var (
@@ -26,9 +27,23 @@ var (
 )
 
 func NewGeminiService() *GeminiService {
+	uibService, err := NewUIBEventService()
+	if err != nil {
+		log.Printf("[gemini] ❌ CRITICAL: Failed to initialize UIB service: %v", err)
+		log.Printf("[gemini] ❌ UIB queries will NOT work properly!")
+		// Continue without UIB service - not critical
+	} else {
+		log.Printf("[gemini] ✅ UIB service initialized successfully")
+		allEvents := uibService.GetAllEvents()
+		log.Printf("[gemini] ✅ UIB service loaded %d events total", len(allEvents))
+		novEvents := uibService.GetEventsByMonth("november")
+		log.Printf("[gemini] ✅ UIB service has %d November events", len(novEvents))
+	}
+
 	return &GeminiService{
-		apiKey:  config.GeminiAPIKey,
-		enabled: config.IsGeminiEnabled,
+		apiKey:     config.GeminiAPIKey,
+		enabled:    config.IsGeminiEnabled,
+		uibService: uibService,
 	}
 }
 
@@ -47,7 +62,46 @@ func (s *GeminiService) AskCampus(ctx context.Context, question string) (string,
 		return "", fmt.Errorf("GEMINI_API_KEY is not set")
 	}
 
-	prompt := fmt.Sprintf("Jawab secara rinci, terstruktur, dan mudah dipahami tentang informasi kampus. Gunakan Bahasa Indonesia yang jelas. Sertakan poin-poin penting, contoh jika relevan, dan langkah-langkah praktis. Jika ada ketidakpastian, sebutkan asumsi atau saran lanjutan. Pertanyaan: %s", question)
+	// Check if question is related to UIB and add context if available
+	var prompt string
+	log.Printf("[gemini] 🔍 DEBUGGING - Question: %s", question)
+
+	if s.uibService == nil {
+		log.Printf("[gemini] ❌ UIB service is nil - UIB features disabled")
+	} else {
+		isUIBQuery := s.uibService.AnalyzeQueryForUIB(question)
+		log.Printf("[gemini] 🔍 UIB detection result: %t", isUIBQuery)
+	}
+
+	if s.uibService != nil && s.uibService.AnalyzeQueryForUIB(question) {
+		log.Printf("[gemini] ✅ UIB-RELATED QUERY DETECTED! Adding UIB context")
+
+		relevantEvents := s.uibService.GetRelevantEventsForQuery(question)
+		log.Printf("[gemini] Found %d relevant UIB events", len(relevantEvents))
+		uibContext := s.uibService.FormatEventsForGemini(relevantEvents)
+
+		prompt = fmt.Sprintf(`TANGGAL HARI INI: 4 Oktober 2025
+
+Kamu adalah asisten AI untuk Universitas Internasional Batam (UIB). Jawab pertanyaan menggunakan data resmi UIB yang disediakan di bawah ini.
+
+%s
+
+INSTRUKSI PENTING:
+1. PENTING: Hari ini adalah 4 Oktober 2025, jadi semua acara Oktober-Desember 2025 adalah SAAT INI atau AKAN DATANG
+2. LANGSUNG berikan SEMUA data yang tersedia sesuai pertanyaan - JANGAN tanya balik atau minta klarifikasi
+3. Jika ditanya tentang sertifikasi/webinar per bulan, tampilkan SEMUA yang ada di bulan tersebut
+4. SELALU gunakan data UIB yang disediakan di atas sebagai sumber utama
+5. Format jawaban dengan struktur jelas: Nama acara, tanggal, waktu, lokasi, biaya, kontak
+6. SELALU sebutkan bahwa ini adalah data resmi UIB (UIB_OFFICIAL) 
+7. Jika tidak ada data untuk bulan yang ditanyakan, baru katakan tidak tersedia
+8. JANGAN katakan "memerlukan informasi lebih lanjut" - langsung berikan semua yang ada
+9. Gunakan format: "Berikut sertifikasi UIB untuk [bulan]:" lalu list semua
+
+Pertanyaan: %s`, uibContext, question)
+	} else {
+		log.Printf("[gemini] ❌ NON-UIB QUERY - Using default prompt")
+		prompt = fmt.Sprintf("Jawab secara rinci, terstruktur, dan mudah dipahami tentang informasi kampus. Gunakan Bahasa Indonesia yang jelas. Sertakan poin-poin penting, contoh jika relevan, dan langkah-langkah praktis. Jika ada ketidakpastian, sebutkan asumsi atau saran lanjutan. Pertanyaan: %s", question)
+	}
 
 	models := []string{config.GeminiModel, "gemini-2.0-flash"}
 	tried := make(map[string]error)
@@ -572,4 +626,140 @@ func sleepWithContext(ctx context.Context, d time.Duration) {
 	case <-t.C:
 	case <-ctx.Done():
 	}
+}
+
+// AskCampusWithUIBContext asks Gemini with enhanced UIB context for better UIB-related responses
+func (s *GeminiService) AskCampusWithUIBContext(ctx context.Context, chat []ChatMessage) (string, error) {
+	if !s.enabled {
+		log.Printf("[gemini] disabled via config (IsGeminiEnabled=false)")
+		return "", ErrGeminiDisabled
+	}
+	if strings.TrimSpace(s.apiKey) == "" {
+		log.Printf("[gemini] GEMINI_API_KEY is not set")
+		return "", fmt.Errorf("GEMINI_API_KEY is not set")
+	}
+
+	models := []string{config.GeminiModel, "gemini-2.0-flash"}
+	tried := make(map[string]error)
+
+	payloadBuilder := func() ([]byte, error) {
+		contents := make([]any, 0, len(chat)+2) // +2 for potential UIB context
+
+		// Check if any message in the chat is UIB-related
+		var isUIBRelated bool
+		var latestUserMessage string
+
+		for _, m := range chat {
+			if strings.ToLower(strings.TrimSpace(m.Role)) == "user" {
+				latestUserMessage = m.Text
+				if s.uibService != nil && s.uibService.AnalyzeQueryForUIB(m.Text) {
+					isUIBRelated = true
+				}
+			}
+		}
+
+		// Add UIB context at the beginning if UIB-related
+		if isUIBRelated && s.uibService != nil {
+			log.Printf("[gemini] ✅ CHAT: UIB context detected! Latest message: %s", latestUserMessage)
+			relevantEvents := s.uibService.GetRelevantEventsForQuery(latestUserMessage)
+			log.Printf("[gemini] CHAT: Found %d relevant UIB events for context", len(relevantEvents))
+			uibContext := s.uibService.FormatEventsForGemini(relevantEvents)
+
+			// Add UIB context as system message
+			contents = append(contents, map[string]any{
+				"role":  "model",
+				"parts": []any{map[string]any{"text": "Saya memiliki akses ke data resmi UIB terbaru untuk tahun 2025. Hari ini tanggal 4 Oktober 2025. Berikut adalah data yang relevan:"}},
+			})
+			contents = append(contents, map[string]any{
+				"role":  "user",
+				"parts": []any{map[string]any{"text": uibContext}},
+			})
+			contents = append(contents, map[string]any{
+				"role":  "model",
+				"parts": []any{map[string]any{"text": "Data UIB lengkap untuk Oktober-Desember 2025 telah dimuat dengan mark UIB_OFFICIAL. Saya akan langsung memberikan SEMUA data yang tersedia tanpa meminta klarifikasi tambahan. Semua acara bisa didaftarkan sekarang."}},
+			})
+		}
+
+		// Add all chat messages
+		for _, m := range chat {
+			role := strings.ToLower(strings.TrimSpace(m.Role))
+			if role != "user" && role != "model" {
+				role = "user"
+			}
+			contents = append(contents, map[string]any{
+				"role":  role,
+				"parts": []any{map[string]any{"text": m.Text}},
+			})
+		}
+
+		systemInstruction := "Anda adalah asisten kampus yang sangat membantu. Jawab secara rinci, terstruktur (gunakan poin-poin atau langkah), dan jelas dalam Bahasa Indonesia. Jika konteks tidak cukup, minta klarifikasi singkat. Tetap fokus pada topik akademik/kampus."
+
+		if isUIBRelated {
+			systemInstruction = `TANGGAL HARI INI: 4 Oktober 2025
+
+Anda adalah asisten resmi Universitas Internasional Batam (UIB). 
+
+INSTRUKSI KHUSUS UIB:
+1. PENTING: Hari ini adalah 4 Oktober 2025, jadi semua acara Oktober-Desember 2025 adalah SAAT INI atau AKAN DATANG
+2. LANGSUNG berikan SEMUA data yang tersedia - JANGAN tanya balik atau minta klarifikasi
+3. Jika ditanya tentang sertifikasi/webinar per bulan, tampilkan SEMUA yang ada di bulan tersebut
+4. WAJIB gunakan data UIB yang telah disediakan sebagai sumber utama
+5. Format: "Berikut sertifikasi UIB untuk [bulan]:" lalu list semua dengan detail lengkap
+6. SELALU sebutkan bahwa informasi berasal dari data resmi UIB (UIB_OFFICIAL)
+7. Sertakan detail lengkap: tanggal, waktu, lokasi, biaya, kontak jika tersedia
+8. JANGAN katakan "memerlukan informasi lebih lanjut" - langsung berikan semua yang ada
+9. Format jawaban dengan emoji dan struktur yang menarik
+10. Untuk pendaftaran, selalu sertakan informasi kontak dan deadline jika ada
+
+Prioritas jawaban: Data UIB lengkap → Informasi umum kampus → Saran kontak UIB`
+		}
+
+		reqBody := map[string]any{
+			"systemInstruction": map[string]any{
+				"parts": []any{map[string]any{"text": systemInstruction}},
+			},
+			"contents": contents,
+			"generationConfig": map[string]any{
+				"temperature":     0.6,
+				"maxOutputTokens": 2048,
+				"topK":            40,
+				"topP":            0.9,
+			},
+		}
+		return json.Marshal(reqBody)
+	}
+
+	for _, m := range models {
+		if strings.TrimSpace(m) == "" {
+			continue
+		}
+		payload, err := payloadBuilder()
+		if err != nil {
+			return "", fmt.Errorf("failed to build payload: %w", err)
+		}
+		text, err := s.callGenerateContentWithBody(ctx, m, payload)
+		if err != nil && isRetriable(err) {
+			sleepWithContext(ctx, 2*time.Second)
+			text, err = s.callGenerateContentWithBody(ctx, m, payload)
+		}
+		if err == nil && strings.TrimSpace(text) != "" {
+			return strings.TrimSpace(text), nil
+		}
+		if err != nil {
+			tried[m] = err
+			log.Printf("[gemini] model %s failed: %v", m, err)
+		}
+	}
+
+	var b strings.Builder
+	b.WriteString("all gemini models failed: ")
+	first := true
+	for m, e := range tried {
+		if !first {
+			b.WriteString("; ")
+		}
+		first = false
+		b.WriteString(fmt.Sprintf("%s -> %v", m, e))
+	}
+	return "", errors.New(b.String())
 }
