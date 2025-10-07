@@ -7,8 +7,10 @@ import (
 	"AkuAI/pkg/config"
 	svc "AkuAI/pkg/services"
 	tokenstore "AkuAI/pkg/token"
+	utils "AkuAI/pkg/utills"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -205,12 +207,16 @@ func ChatWS(db *gorm.DB) gin.HandlerFunc {
 			}
 		}
 
+		uibQuery := isUIBEventQuery(start.Message)
 		ck := cache.KeyFromStrings("chat-final", userIDStr, strings.ToLower(strings.TrimSpace(start.Message)))
-		if cachedText, ok, cacheInfo := cache.Default().GetChatResponseWithInfo(ck); ok {
+		if uibQuery {
+			cache.Default().InvalidateChatResponse(ck)
+		} else if cachedText, ok, cacheInfo := cache.Default().GetChatResponseWithInfo(ck); ok {
 			log.Printf("[ws] 🟢 SERVING FROM CACHE - User: %s, Message: %.50s..., Cache Age: %v",
 				userIDStr, start.Message, time.Since(cacheInfo.CachedAt).Round(time.Second))
 
-			runes := []rune(cachedText)
+			normalizedCached := utils.NormalizeWhitespace(cachedText)
+			runes := []rune(normalizedCached)
 			chunk := 32
 			for i := 0; i < len(runes); i += chunk {
 				if isStopped() {
@@ -280,7 +286,7 @@ func ChatWS(db *gorm.DB) gin.HandlerFunc {
 			cancel()
 		}
 
-		botText := strings.TrimSpace(full.String())
+		botText := utils.NormalizeWhitespace(full.String())
 
 		if isStopped() {
 			cache.Default().InvalidateChatResponse(ck)
@@ -304,27 +310,122 @@ func ChatWS(db *gorm.DB) gin.HandlerFunc {
 
 		// Handle image search if requested
 		if start.RequestImages {
-			_ = conn.WriteJSON(gin.H{"type": "images_searching", "message": "Mencari gambar yang relevan..."})
+			detectedUniversity := ""
+			if du, err := gsvc.DetectUniversityName(ctx, history, botText); err != nil {
+				log.Printf("[ws] ⚠️ failed to detect university: %v", err)
+			} else {
+				detectedUniversity = strings.TrimSpace(du)
+			}
+
+			primaryQuery := detectedUniversity
+			if primaryQuery == "" {
+				primaryQuery = "kampus"
+			}
+
+			messageText := "Mencari gambar kampus..."
+			if primaryQuery != "kampus" {
+				messageText = fmt.Sprintf("Mencari gambar %s...", primaryQuery)
+			}
+
+			_ = conn.WriteJSON(gin.H{
+				"type":                "images_searching",
+				"message":             messageText,
+				"query":               primaryQuery,
+				"detected_university": detectedUniversity,
+			})
 
 			imageService := svc.NewGoogleImageService()
 			if imageService.IsEnabled() {
 				searchCtx, searchCancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer searchCancel()
 
-				// Search for images based on the message context
-				images, err := imageService.SearchImagesForChat(searchCtx, start.Message)
+				activeQuery := primaryQuery
+				fallbackUsed := false
+
+				images, err := imageService.SearchImagesForChat(searchCtx, primaryQuery)
+				if (err != nil || len(images) == 0) && primaryQuery != "kampus" {
+					fallbackUsed = true
+					log.Printf("[ws] ℹ️ primary image query '%s' returned err=%v, attempting fallback 'kampus'", primaryQuery, err)
+					if fallbackImages, fallbackErr := imageService.SearchImagesForChat(searchCtx, "kampus"); fallbackErr == nil && len(fallbackImages) > 0 {
+						images = fallbackImages
+						err = nil
+						activeQuery = "kampus"
+					} else {
+						if fallbackErr != nil {
+							err = fallbackErr
+						}
+						images = fallbackImages
+						activeQuery = "kampus"
+					}
+				}
+
 				if err != nil {
-					_ = conn.WriteJSON(gin.H{"type": "images_error", "error": "Gagal mencari gambar: " + err.Error()})
+					_ = conn.WriteJSON(gin.H{
+						"type":                "images_error",
+						"error":               fmt.Sprintf("Gagal mencari gambar untuk '%s': %v", activeQuery, err),
+						"query":               activeQuery,
+						"primary_query":       primaryQuery,
+						"detected_university": detectedUniversity,
+						"fallback":            fallbackUsed,
+					})
 				} else if len(images) > 0 {
-					_ = conn.WriteJSON(gin.H{"type": "images_found", "images": images, "count": len(images)})
+					_ = conn.WriteJSON(gin.H{
+						"type":                "images_found",
+						"images":              images,
+						"count":               len(images),
+						"query":               activeQuery,
+						"primary_query":       primaryQuery,
+						"detected_university": detectedUniversity,
+						"fallback":            fallbackUsed,
+					})
 				} else {
-					_ = conn.WriteJSON(gin.H{"type": "images_empty", "message": "Tidak ada gambar yang ditemukan"})
+					_ = conn.WriteJSON(gin.H{
+						"type":                "images_empty",
+						"message":             fmt.Sprintf("Tidak ada gambar ditemukan untuk '%s'", activeQuery),
+						"query":               activeQuery,
+						"primary_query":       primaryQuery,
+						"detected_university": detectedUniversity,
+						"fallback":            fallbackUsed,
+					})
 				}
 			} else {
-				_ = conn.WriteJSON(gin.H{"type": "images_disabled", "message": "Fitur pencarian gambar belum dikonfigurasi"})
+				_ = conn.WriteJSON(gin.H{
+					"type":    "images_disabled",
+					"message": "Fitur pencarian gambar belum dikonfigurasi",
+					"query":   primaryQuery,
+				})
 			}
 		}
 
 		_ = conn.WriteJSON(gin.H{"type": "done", "ok": true})
 	}
+}
+
+func isUIBEventQuery(text string) bool {
+	lowered := strings.ToLower(text)
+	keywords := []string{
+		"uib",
+		"universitas internasional batam",
+		"webinar uib",
+		"sertifikasi uib",
+		"acara uib",
+		"event uib",
+		"kegiatan uib",
+		"seminar uib",
+		"workshop uib",
+		"november uib",
+		"oktober uib",
+		"desember uib",
+		"november 2025",
+		"oktober 2025",
+		"desember 2025",
+	}
+
+	for _, keyword := range keywords {
+		if strings.Contains(lowered, keyword) {
+			return true
+		}
+	}
+
+	return false
 }

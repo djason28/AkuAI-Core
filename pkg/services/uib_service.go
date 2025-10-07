@@ -277,16 +277,34 @@ func (s *UIBEventService) AnalyzeQueryForUIB(query string) bool {
 		}
 	}
 
-	// Only detect UIB for specific events/activities
-	uibEventKeywords := []string{
+	// Check for UIB-specific keywords
+	uibDirectKeywords := []string{
 		"sertifikasi uib", "webinar uib", "acara uib",
 		"oktober uib", "november uib", "desember uib",
 		"pendaftaran uib", "event uib", "kegiatan uib",
 		"seminar uib", "workshop uib", "pelatihan uib",
+		"universitas internasional batam",
 	}
 
-	for _, keyword := range uibEventKeywords {
+	for _, keyword := range uibDirectKeywords {
 		if strings.Contains(queryLower, keyword) {
+			return true
+		}
+	}
+
+	// Also detect general webinar/sertifikasi queries for November 2025
+	// since we have UIB data for that period
+	monthEventPatterns := []string{
+		"webinar november", "sertifikasi november",
+		"acara november", "event november",
+		"seminar november", "workshop november",
+		"webinar oktober", "sertifikasi oktober",
+		"webinar desember", "sertifikasi desember",
+		"november 2025", "oktober 2025", "desember 2025",
+	}
+
+	for _, pattern := range monthEventPatterns {
+		if strings.Contains(queryLower, pattern) {
 			return true
 		}
 	}
@@ -300,14 +318,43 @@ func (s *UIBEventService) GetRelevantEventsForQuery(query string) []models.UIBEv
 	allEvents := s.GetAllEvents()
 	var relevantEvents []models.UIBEvent
 
+	monthPrefixes := detectMonthPrefixes(queryLower)
+	requiredType := detectEventType(queryLower)
+
 	for _, event := range allEvents {
-		// Check if query matches event content
+		datePrefix := ""
+		if len(event.Date) >= 7 {
+			datePrefix = strings.ToLower(event.Date[:7])
+		}
+		if len(monthPrefixes) > 0 && (datePrefix == "" || !monthPrefixes[datePrefix]) {
+			continue
+		}
+		if requiredType != "" && !strings.EqualFold(event.Type, requiredType) {
+			continue
+		}
 		if s.isEventRelevantToQuery(event, queryLower) {
 			relevantEvents = append(relevantEvents, event)
 		}
 	}
 
-	// If no specific matches, return upcoming events
+	if len(relevantEvents) == 0 {
+		for _, event := range allEvents {
+			datePrefix := ""
+			if len(event.Date) >= 7 {
+				datePrefix = strings.ToLower(event.Date[:7])
+			}
+			if len(monthPrefixes) > 0 && (datePrefix == "" || !monthPrefixes[datePrefix]) {
+				continue
+			}
+			if requiredType != "" && !strings.EqualFold(event.Type, requiredType) {
+				continue
+			}
+			if len(monthPrefixes) > 0 || requiredType != "" {
+				relevantEvents = append(relevantEvents, event)
+			}
+		}
+	}
+
 	if len(relevantEvents) == 0 && s.AnalyzeQueryForUIB(query) {
 		return s.GetUpcomingEvents()
 	}
@@ -337,7 +384,11 @@ func (s *UIBEventService) isEventRelevantToQuery(event models.UIBEvent, queryLow
 	}
 
 	for _, field := range searchableFields {
-		if strings.Contains(field, queryLower) {
+		field = strings.TrimSpace(field)
+		if field == "" {
+			continue
+		}
+		if strings.Contains(field, queryLower) || strings.Contains(queryLower, field) {
 			return true
 		}
 	}
@@ -354,4 +405,47 @@ func (s *UIBEventService) isEventRelevantToQuery(event models.UIBEvent, queryLow
 	}
 
 	return false
+}
+
+func detectMonthPrefixes(queryLower string) map[string]bool {
+	monthMap := map[string][]string{
+		"2025-10": {"oktober", "october"},
+		"2025-11": {"november"},
+		"2025-12": {"desember", "december"},
+	}
+
+	result := make(map[string]bool)
+	for prefix, keywords := range monthMap {
+		for _, keyword := range keywords {
+			if strings.Contains(queryLower, keyword) {
+				result[strings.ToLower(prefix)] = true
+				break
+			}
+		}
+	}
+
+	return result
+}
+
+func detectEventType(queryLower string) string {
+	if strings.Contains(queryLower, "webinar") || strings.Contains(queryLower, "seminar") || strings.Contains(queryLower, "talkshow") || strings.Contains(queryLower, "kuliah umum") {
+		return "webinar"
+	}
+
+	certKeywords := []string{
+		"sertifikasi",
+		"certification",
+		"certificate",
+		"pelatihan",
+		"workshop",
+		"bootcamp",
+	}
+
+	for _, keyword := range certKeywords {
+		if strings.Contains(queryLower, keyword) {
+			return "certification"
+		}
+	}
+
+	return ""
 }

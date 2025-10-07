@@ -8,9 +8,38 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode"
 
 	"AkuAI/pkg/config"
 )
+
+var mockImageCatalog = map[string][]string{
+	"universitas internasional batam": {
+		"https://images.unsplash.com/photo-1588072432836-e10032774350?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80",
+	},
+	"universitas indonesia": {
+		"https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1200&q=80",
+	},
+	"universitas gadjah mada": {
+		"https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1521737604893-0fe0f5f48f8b?auto=format&fit=crop&w=1200&q=80",
+	},
+	"institut teknologi bandung": {
+		"https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1509099955925-930d1a1ae353?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80",
+	},
+	"kampus": {
+		"https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80",
+		"https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1200&q=80",
+	},
+}
 
 func validateImageURL(client *http.Client, imageURL string) bool {
 	if !(strings.HasPrefix(imageURL, "http://") || strings.HasPrefix(imageURL, "https://")) {
@@ -293,11 +322,17 @@ func GetGoogleImages4(query string) ([]string, error) {
 func GetGoogleImages3(query string) ([]string, error) {
 	// Mock logic: always mock if staging, or if production but disabled
 	if config.IsStaging || (config.IsProduction && !config.IsGoogleAPIEnabled) {
-		return []string{
-			"https://www.uib.ac.id/wp-content/uploads/2024/05/new-gedung-baru-UIB-1.gif",
-			"https://kfmap.asia/storage/thumbs/storage/photos/ID.BTM.UNIV.BIU/ID.BTM.UNIV.BIU_2.jpg",
-			"https://www.uib.ac.id/wp-content/uploads/2024/06/Student-Exchange-Hanbat.webp",
-		}, nil
+		key := strings.ToLower(strings.TrimSpace(query))
+		if key == "" {
+			key = "kampus"
+		}
+		if images, ok := mockImageCatalog[key]; ok {
+			return images, nil
+		}
+		if images, ok := mockImageCatalog["kampus"]; ok {
+			return images, nil
+		}
+		return []string{}, nil
 	}
 
 	apiKey := config.GoogleAPIKey
@@ -406,14 +441,19 @@ func (s *GoogleImageService) IsEnabled() bool {
 	return s.enabled
 }
 
-// SearchImagesForChat untuk ws.go dengan context - return 3 gambar
-func (s *GoogleImageService) SearchImagesForChat(ctx interface{}, message string) ([]ImageSearchResult, error) {
+// SearchImagesForChat untuk ws.go dengan context - return 3 gambar berdasarkan kata kunci
+func (s *GoogleImageService) SearchImagesForChat(ctx interface{}, searchTerm string) ([]ImageSearchResult, error) {
 	if !s.enabled {
 		return nil, fmt.Errorf("google image service not enabled")
 	}
 
-	// Menggunakan GetGoogleImages3 untuk mendapatkan 3 gambar
-	urls, err := GetGoogleImages3("University International Batam")
+	term := strings.TrimSpace(searchTerm)
+	if term == "" {
+		term = "kampus"
+	}
+
+	// Menggunakan GetGoogleImages3 untuk mendapatkan 3 gambar sesuai query
+	urls, err := GetGoogleImages3(term)
 	if err != nil {
 		return nil, err
 	}
@@ -422,7 +462,7 @@ func (s *GoogleImageService) SearchImagesForChat(ctx interface{}, message string
 	results := make([]ImageSearchResult, len(urls))
 	for i, url := range urls {
 		results[i] = ImageSearchResult{
-			Title:        fmt.Sprintf("UIB Image %d", i+1),
+			Title:        fmt.Sprintf("%s #%d", humanizeQuery(term), i+1),
 			ImageURL:     url,
 			ThumbnailURL: url,
 			SourceURL:    url,
@@ -440,8 +480,13 @@ func (s *GoogleImageService) SearchImages(ctx interface{}, query string, maxResu
 		return nil, fmt.Errorf("google image service not enabled")
 	}
 
-	// Menggunakan GetGoogleImages3 untuk mendapatkan 3 gambar UIB
-	urls, err := GetGoogleImages3("University International Batam")
+	term := strings.TrimSpace(query)
+	if term == "" {
+		term = "kampus"
+	}
+
+	// Menggunakan GetGoogleImages3 untuk mendapatkan gambar sesuai query
+	urls, err := GetGoogleImages3(term)
 	if err != nil {
 		return nil, err
 	}
@@ -455,7 +500,7 @@ func (s *GoogleImageService) SearchImages(ctx interface{}, query string, maxResu
 	results := make([]ImageSearchResult, len(urls))
 	for i, url := range urls {
 		results[i] = ImageSearchResult{
-			Title:        fmt.Sprintf("UIB Image %d", i+1),
+			Title:        fmt.Sprintf("%s #%d", humanizeQuery(term), i+1),
 			ImageURL:     url,
 			ThumbnailURL: url,
 			SourceURL:    url,
@@ -465,6 +510,28 @@ func (s *GoogleImageService) SearchImages(ctx interface{}, query string, maxResu
 	}
 
 	return results, nil
+}
+
+func humanizeQuery(query string) string {
+	q := strings.TrimSpace(query)
+	if q == "" {
+		return "Kampus"
+	}
+	words := strings.Fields(q)
+	for i, w := range words {
+		upper := strings.ToUpper(w)
+		if len(w) <= 5 && w == upper {
+			words[i] = upper
+			continue
+		}
+		r := []rune(strings.ToLower(w))
+		if len(r) == 0 {
+			continue
+		}
+		r[0] = unicode.ToUpper(r[0])
+		words[i] = string(r)
+	}
+	return strings.Join(words, " ")
 }
 
 // ExtractSearchTermFromContext method untuk images controller

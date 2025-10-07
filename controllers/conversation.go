@@ -303,35 +303,96 @@ func CreateOrAddMessageStream(db *gorm.DB) gin.HandlerFunc {
 
 		// Handle image search if requested
 		if body.RequestImages {
+			detectedUniversity := ""
+			if du, err := gsvc.DetectUniversityName(ctx, history, botText); err != nil {
+				log.Printf("[conversation] ⚠️ failed to detect university: %v", err)
+			} else {
+				detectedUniversity = strings.TrimSpace(du)
+			}
+
+			primaryQuery := detectedUniversity
+			if primaryQuery == "" {
+				primaryQuery = "kampus"
+			}
+
+			messageText := "Mencari gambar kampus..."
+			if primaryQuery != "kampus" {
+				messageText = fmt.Sprintf("Mencari gambar %s...", primaryQuery)
+			}
+
 			fmt.Fprintf(c.Writer, "event: images_searching\n")
-			fmt.Fprintf(c.Writer, "data: {\"message\": \"Mencari gambar Universitas International Batam...\"}\n\n")
+			fmt.Fprintf(c.Writer, "data: {\"message\": %s, \"query\": %s, \"detected_university\": %s}\n\n",
+				strconv.Quote(messageText),
+				strconv.Quote(primaryQuery),
+				strconv.Quote(detectedUniversity),
+			)
 			flusher.Flush()
 
-			// Use Google Images API with UIB-specific search
 			googleImageService := svc.NewGoogleImageService()
 			if googleImageService.IsEnabled() {
 				searchCtx, searchCancel := context.WithTimeout(ctx, 30*time.Second)
 				defer searchCancel()
 
-				// Search for UIB images using Google API
-				images, err := googleImageService.SearchImagesForChat(searchCtx, body.Message)
+				activeQuery := primaryQuery
+				fallbackUsed := false
+
+				images, err := googleImageService.SearchImagesForChat(searchCtx, primaryQuery)
+				if (err != nil || len(images) == 0) && primaryQuery != "kampus" {
+					fallbackUsed = true
+					log.Printf("[conversation] ℹ️ primary image query '%s' returned err=%v, attempting fallback 'kampus'", primaryQuery, err)
+					if fallbackImages, fallbackErr := googleImageService.SearchImagesForChat(searchCtx, "kampus"); fallbackErr == nil && len(fallbackImages) > 0 {
+						images = fallbackImages
+						err = nil
+						activeQuery = "kampus"
+					} else {
+						if fallbackErr != nil {
+							err = fallbackErr
+						}
+						images = fallbackImages
+						activeQuery = "kampus"
+					}
+				}
+
 				if err != nil {
+					errorMessage := fmt.Sprintf("Gagal mencari gambar untuk '%s': %v", activeQuery, err)
 					fmt.Fprintf(c.Writer, "event: images_error\n")
-					fmt.Fprintf(c.Writer, "data: {\"error\": \"Gagal mencari gambar UIB: %s\"}\n\n", strings.ReplaceAll(err.Error(), `"`, `\"`))
+					fmt.Fprintf(c.Writer, "data: {\"error\": %s, \"query\": %s, \"primary_query\": %s, \"detected_university\": %s, \"fallback\": %t}\n\n",
+						strconv.Quote(errorMessage),
+						strconv.Quote(activeQuery),
+						strconv.Quote(primaryQuery),
+						strconv.Quote(detectedUniversity),
+						fallbackUsed,
+					)
 					flusher.Flush()
 				} else if len(images) > 0 {
 					imagesJSON, _ := json.Marshal(images)
 					fmt.Fprintf(c.Writer, "event: images_found\n")
-					fmt.Fprintf(c.Writer, "data: {\"images\": %s, \"count\": %d}\n\n", string(imagesJSON), len(images))
+					fmt.Fprintf(c.Writer, "data: {\"images\": %s, \"count\": %d, \"query\": %s, \"primary_query\": %s, \"detected_university\": %s, \"fallback\": %t}\n\n",
+						string(imagesJSON),
+						len(images),
+						strconv.Quote(activeQuery),
+						strconv.Quote(primaryQuery),
+						strconv.Quote(detectedUniversity),
+						fallbackUsed,
+					)
 					flusher.Flush()
 				} else {
+					emptyMessage := fmt.Sprintf("Tidak ada gambar ditemukan untuk '%s'", activeQuery)
 					fmt.Fprintf(c.Writer, "event: images_empty\n")
-					fmt.Fprintf(c.Writer, "data: {\"message\": \"Tidak ada gambar UIB yang ditemukan\"}\n\n")
+					fmt.Fprintf(c.Writer, "data: {\"message\": %s, \"query\": %s, \"primary_query\": %s, \"detected_university\": %s, \"fallback\": %t}\n\n",
+						strconv.Quote(emptyMessage),
+						strconv.Quote(activeQuery),
+						strconv.Quote(primaryQuery),
+						strconv.Quote(detectedUniversity),
+						fallbackUsed,
+					)
 					flusher.Flush()
 				}
 			} else {
 				fmt.Fprintf(c.Writer, "event: images_disabled\n")
-				fmt.Fprintf(c.Writer, "data: {\"message\": \"Fitur pencarian gambar belum dikonfigurasi\"}\n\n")
+				fmt.Fprintf(c.Writer, "data: {\"message\": \"Fitur pencarian gambar belum dikonfigurasi\", \"query\": %s}\n\n",
+					strconv.Quote(primaryQuery),
+				)
 				flusher.Flush()
 			}
 		}

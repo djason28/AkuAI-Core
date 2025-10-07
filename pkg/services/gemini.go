@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -21,6 +22,22 @@ type GeminiService struct {
 	enabled    bool
 	uibService *UIBEventService
 }
+
+var universityAliasMap = map[string]string{
+	"UIB":                                   "Universitas Internasional Batam",
+	"UNIVERSITAS INTERNASIONAL BATAM":       "Universitas Internasional Batam",
+	"UNIVERSITAS INTERNASIONAL BATAM (UIB)": "Universitas Internasional Batam",
+	"UNIVERSITAS INDONESIA":                 "Universitas Indonesia",
+	"UNIVERSITAS GADJAH MADA":               "Universitas Gadjah Mada",
+	"INSTITUT TEKNOLOGI BANDUNG":            "Institut Teknologi Bandung",
+	"ITB":                                   "Institut Teknologi Bandung",
+	"IPB":                                   "Institut Pertanian Bogor",
+	"UNIVERSITAS AIRLANGGA":                 "Universitas Airlangga",
+	"BINUS":                                 "Bina Nusantara University",
+	"BINUS UNIVERSITY":                      "Bina Nusantara University",
+}
+
+var universityRegex = regexp.MustCompile(`(?i)(universitas|universiti|university|institut|institute|politeknik|sekolah tinggi|college)[^.,;:\n]{0,80}`)
 
 var (
 	ErrGeminiDisabled = errors.New("gemini is disabled via config")
@@ -155,6 +172,45 @@ func (s *GeminiService) AskCampusWithChat(ctx context.Context, chat []ChatMessag
 	models := []string{config.GeminiModel, "gemini-2.0-flash"}
 	tried := make(map[string]error)
 
+	// Extract the latest user question for UIB context detection
+	var latestUserQuestion string
+	for i := len(chat) - 1; i >= 0; i-- {
+		if strings.ToLower(strings.TrimSpace(chat[i].Role)) == "user" {
+			latestUserQuestion = chat[i].Text
+			break
+		}
+	}
+
+	// Check for UIB context and build system instruction
+	var systemInstruction string
+	if s.uibService != nil && s.uibService.AnalyzeQueryForUIB(latestUserQuestion) {
+		log.Printf("[gemini] ✅ UIB-RELATED CHAT QUERY DETECTED! Adding UIB context")
+		relevantEvents := s.uibService.GetRelevantEventsForQuery(latestUserQuestion)
+		log.Printf("[gemini] Found %d relevant UIB events for chat", len(relevantEvents))
+		uibContext := s.uibService.FormatEventsForGemini(relevantEvents)
+
+		systemInstruction = fmt.Sprintf(`TANGGAL HARI INI: 4 Oktober 2025
+
+Kamu adalah asisten AI untuk Universitas Internasional Batam (UIB). Jawab pertanyaan menggunakan data resmi UIB yang disediakan di bawah ini.
+
+%s
+
+INSTRUKSI PENTING:
+1. PENTING: Hari ini adalah 4 Oktober 2025, jadi semua acara Oktober-Desember 2025 adalah SAAT INI atau AKAN DATANG
+2. LANGSUNG berikan SEMUA data yang tersedia sesuai pertanyaan - JANGAN tanya balik atau minta klarifikasi
+3. Jika ditanya tentang sertifikasi/webinar per bulan, tampilkan SEMUA yang ada di bulan tersebut
+4. SELALU gunakan data UIB yang disediakan di atas sebagai sumber utama
+5. Format jawaban dengan struktur jelas: Nama acara, tanggal, waktu, lokasi, biaya, kontak
+6. SELALU sebutkan bahwa ini adalah data resmi UIB (UIB_OFFICIAL) 
+7. Jika tidak ada data untuk bulan yang ditanyakan, baru katakan tidak tersedia
+8. JANGAN katakan "memerlukan informasi lebih lanjut" - langsung berikan semua yang ada
+9. Gunakan format: "Berikut sertifikasi UIB untuk [bulan]:" lalu list semua
+10. Jawab dalam Bahasa Indonesia yang jelas dan terstruktur`, uibContext)
+	} else {
+		log.Printf("[gemini] ❌ NON-UIB CHAT QUERY - Using default system instruction")
+		systemInstruction = "Anda adalah asisten kampus yang sangat membantu. Jawab secara rinci, terstruktur (gunakan poin-poin atau langkah), dan jelas dalam Bahasa Indonesia. Jika konteks tidak cukup, minta klarifikasi singkat. Tetap fokus pada topik akademik/kampus."
+	}
+
 	payloadBuilder := func() ([]byte, error) {
 		contents := make([]any, 0, len(chat))
 		for _, m := range chat {
@@ -169,7 +225,7 @@ func (s *GeminiService) AskCampusWithChat(ctx context.Context, chat []ChatMessag
 		}
 		reqBody := map[string]any{
 			"systemInstruction": map[string]any{
-				"parts": []any{map[string]any{"text": "Anda adalah asisten kampus yang sangat membantu. Jawab secara rinci, terstruktur (gunakan poin-poin atau langkah), dan jelas dalam Bahasa Indonesia. Jika konteks tidak cukup, minta klarifikasi singkat. Tetap fokus pada topik akademik/kampus."}},
+				"parts": []any{map[string]any{"text": systemInstruction}},
 			},
 			"contents": contents,
 			"generationConfig": map[string]any{
@@ -279,6 +335,45 @@ func (s *GeminiService) StreamCampusWithChat(ctx context.Context, chat []ChatMes
 	models := []string{config.GeminiModel, "gemini-2.0-flash"}
 	tried := make(map[string]error)
 
+	// Extract the latest user question for UIB context detection
+	var latestUserQuestion string
+	for i := len(chat) - 1; i >= 0; i-- {
+		if strings.ToLower(strings.TrimSpace(chat[i].Role)) == "user" {
+			latestUserQuestion = chat[i].Text
+			break
+		}
+	}
+
+	// Check for UIB context and build system instruction
+	var systemInstruction string
+	if s.uibService != nil && s.uibService.AnalyzeQueryForUIB(latestUserQuestion) {
+		log.Printf("[gemini] ✅ UIB-RELATED STREAM QUERY DETECTED! Adding UIB context")
+		relevantEvents := s.uibService.GetRelevantEventsForQuery(latestUserQuestion)
+		log.Printf("[gemini] Found %d relevant UIB events for streaming", len(relevantEvents))
+		uibContext := s.uibService.FormatEventsForGemini(relevantEvents)
+
+		systemInstruction = fmt.Sprintf(`TANGGAL HARI INI: 4 Oktober 2025
+
+Kamu adalah asisten AI untuk Universitas Internasional Batam (UIB). Jawab pertanyaan menggunakan data resmi UIB yang disediakan di bawah ini.
+
+%s
+
+INSTRUKSI PENTING:
+1. PENTING: Hari ini adalah 4 Oktober 2025, jadi semua acara Oktober-Desember 2025 adalah SAAT INI atau AKAN DATANG
+2. LANGSUNG berikan SEMUA data yang tersedia sesuai pertanyaan - JANGAN tanya balik atau minta klarifikasi
+3. Jika ditanya tentang sertifikasi/webinar per bulan, tampilkan SEMUA yang ada di bulan tersebut
+4. SELALU gunakan data UIB yang disediakan di atas sebagai sumber utama
+5. Format jawaban dengan struktur jelas: Nama acara, tanggal, waktu, lokasi, biaya, kontak
+6. SELALU sebutkan bahwa ini adalah data resmi UIB (UIB_OFFICIAL) 
+7. Jika tidak ada data untuk bulan yang ditanyakan, baru katakan tidak tersedia
+8. JANGAN katakan "memerlukan informasi lebih lanjut" - langsung berikan semua yang ada
+9. Gunakan format: "Berikut sertifikasi UIB untuk [bulan]:" lalu list semua
+10. Jawab dalam Bahasa Indonesia yang jelas dan terstruktur`, uibContext)
+	} else {
+		log.Printf("[gemini] ❌ NON-UIB STREAM QUERY - Using default system instruction")
+		systemInstruction = "Anda adalah asisten kampus yang sangat membantu. Jawab secara rinci, terstruktur (gunakan poin-poin atau langkah), dan jelas dalam Bahasa Indonesia. Jika konteks tidak cukup, minta klarifikasi singkat. Tetap fokus pada topik akademik/kampus."
+	}
+
 	payloadBuilder := func() ([]byte, error) {
 		contents := make([]any, 0, len(chat))
 		for _, m := range chat {
@@ -293,7 +388,7 @@ func (s *GeminiService) StreamCampusWithChat(ctx context.Context, chat []ChatMes
 		}
 		reqBody := map[string]any{
 			"systemInstruction": map[string]any{
-				"parts": []any{map[string]any{"text": "Anda adalah asisten kampus yang sangat membantu. Jawab secara rinci, terstruktur (gunakan poin-poin atau langkah), dan jelas dalam Bahasa Indonesia. Jika konteks tidak cukup, minta klarifikasi singkat. Tetap fokus pada topik akademik/kampus."}},
+				"parts": []any{map[string]any{"text": systemInstruction}},
 			},
 			"contents": contents,
 			"generationConfig": map[string]any{
@@ -631,6 +726,164 @@ func sleepWithContext(ctx context.Context, d time.Duration) {
 	case <-t.C:
 	case <-ctx.Done():
 	}
+}
+
+func resolveUniversityAlias(key string) string {
+	if val, ok := universityAliasMap[key]; ok {
+		return val
+	}
+	return ""
+}
+
+func sanitizeUniversityName(raw string) string {
+	cleaned := strings.TrimSpace(raw)
+	if cleaned == "" {
+		return ""
+	}
+	cleaned = strings.Trim(cleaned, "`\"")
+	cleaned = strings.TrimSpace(cleaned)
+	cleaned = strings.TrimRight(cleaned, ".,;:!?")
+	cleaned = strings.ReplaceAll(cleaned, "\n", " ")
+	cleaned = strings.ReplaceAll(cleaned, "\r", " ")
+	cleaned = strings.Join(strings.Fields(cleaned), " ")
+	upper := strings.ToUpper(cleaned)
+	if alias := resolveUniversityAlias(upper); alias != "" {
+		return alias
+	}
+	if upper == "NONE" || upper == "UNKNOWN" || upper == "TIDAK ADA" {
+		return ""
+	}
+	return cleaned
+}
+
+func extractUniversityHeuristic(inputs ...string) string {
+	for _, text := range inputs {
+		t := strings.TrimSpace(text)
+		if t == "" {
+			continue
+		}
+		upper := strings.ToUpper(t)
+		for aliasKey, aliasVal := range universityAliasMap {
+			if strings.Contains(upper, aliasKey) {
+				return aliasVal
+			}
+		}
+		if match := universityRegex.FindString(t); match != "" {
+			if candidate := sanitizeUniversityName(match); candidate != "" {
+				return candidate
+			}
+		}
+	}
+	return ""
+}
+
+func extractUniversityFromModelResponse(raw string) string {
+	if strings.TrimSpace(raw) == "" {
+		return ""
+	}
+	stripped := strings.TrimSpace(raw)
+	stripped = strings.Trim(stripped, "`")
+
+	if idx := strings.Index(stripped, "{"); idx >= 0 {
+		if end := strings.LastIndex(stripped, "}"); end > idx {
+			candidateJSON := stripped[idx : end+1]
+			var payload struct {
+				University string `json:"university"`
+			}
+			if err := json.Unmarshal([]byte(candidateJSON), &payload); err == nil {
+				if name := sanitizeUniversityName(payload.University); name != "" {
+					return name
+				}
+			}
+		}
+	}
+
+	if idx := strings.Index(stripped, "\n"); idx > 0 {
+		stripped = stripped[:idx]
+	}
+	return sanitizeUniversityName(stripped)
+}
+
+// DetectUniversityName attempts to infer the university name discussed in the chat using Gemini.
+// If Gemini is unavailable, it falls back to heuristic detection based on the chat content.
+func (s *GeminiService) DetectUniversityName(ctx context.Context, chat []ChatMessage, assistantReply string) (string, error) {
+	fallback := extractUniversityHeuristic(assistantReply)
+	for i := len(chat) - 1; i >= 0 && fallback == ""; i-- {
+		if strings.EqualFold(chat[i].Role, "user") {
+			if candidate := extractUniversityHeuristic(chat[i].Text); candidate != "" {
+				fallback = candidate
+			}
+			break
+		}
+	}
+
+	if config.IsStaging || (config.IsProduction && !config.IsGeminiEnabled) {
+		return fallback, nil
+	}
+
+	if !s.enabled || strings.TrimSpace(s.apiKey) == "" {
+		return fallback, nil
+	}
+
+	latestUser := ""
+	var convoBuilder strings.Builder
+	for _, msg := range chat {
+		role := strings.ToLower(strings.TrimSpace(msg.Role))
+		if role == "" {
+			role = "user"
+		}
+		if role == "user" {
+			latestUser = msg.Text
+		}
+		convoBuilder.WriteString(strings.ToUpper(role[:1]))
+		if len(role) > 1 {
+			convoBuilder.WriteString(role[1:])
+		}
+		convoBuilder.WriteString(": ")
+		convoBuilder.WriteString(strings.TrimSpace(msg.Text))
+		convoBuilder.WriteString("\n")
+	}
+	if assistantReply != "" {
+		convoBuilder.WriteString("Assistant: ")
+		convoBuilder.WriteString(strings.TrimSpace(assistantReply))
+		convoBuilder.WriteString("\n")
+	}
+
+	if strings.TrimSpace(latestUser) == "" {
+		return fallback, nil
+	}
+
+	prompt := fmt.Sprintf(`Analisis percakapan berikut dan tentukan apakah ada universitas spesifik yang diminta atau dibahas.
+
+Balas dalam format JSON satu baris seperti berikut:
+{"university": "Nama Universitas"}
+Jika tidak ada universitas spesifik, gunakan:
+{"university": "NONE"}
+
+Percakapan:
+%s`, convoBuilder.String())
+
+	models := []string{config.GeminiModel, "gemini-2.0-flash"}
+	for _, model := range models {
+		if strings.TrimSpace(model) == "" {
+			continue
+		}
+		response, err := s.callGenerateContent(ctx, model, prompt)
+		if err != nil {
+			if isRetriable(err) {
+				sleepWithContext(ctx, 1500*time.Millisecond)
+				response, err = s.callGenerateContent(ctx, model, prompt)
+			}
+		}
+		if err != nil {
+			continue
+		}
+		if detected := extractUniversityFromModelResponse(response); detected != "" {
+			return detected, nil
+		}
+	}
+
+	return fallback, nil
 }
 
 // AskCampusWithUIBContext asks Gemini with enhanced UIB context for better UIB-related responses
