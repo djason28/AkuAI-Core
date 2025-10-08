@@ -23,7 +23,12 @@ type ObjectStorageService struct {
 
 func NewObjectStorageService() *ObjectStorageService {
 	basePath := "./uploads/profiles"
-	baseURL := "http://127.0.0.1:5000/uploads/profiles"
+	// Use public base URL from env if set, fallback to localhost for dev
+	baseURL := os.Getenv("PUBLIC_BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://127.0.0.1:5000"
+	}
+	baseURL = strings.TrimRight(baseURL, "/") + "/uploads/profiles"
 	secretKey := "your-secret-key-for-signing"
 
 	os.MkdirAll(basePath, 0755)
