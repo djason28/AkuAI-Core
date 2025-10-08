@@ -7,6 +7,8 @@ import (
 	"AkuAI/routes"
 	"fmt"
 	"log"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -44,8 +46,23 @@ func main() {
 
 	r := gin.Default()
 
+	// Allow CORS from configured frontend origins in VPS; fallback to local dev origins
+	var origins []string
+	if env := strings.TrimSpace(os.Getenv("FRONTEND_ORIGINS")); env != "" {
+		// comma-separated list, e.g., "https://yourdomain.com,https://www.yourdomain.com"
+		for _, o := range strings.Split(env, ",") {
+			o = strings.TrimSpace(o)
+			if o != "" {
+				origins = append(origins, o)
+			}
+		}
+	}
+	if len(origins) == 0 {
+		origins = []string{"http://localhost:5173", "http://127.0.0.1:5173"}
+	}
+
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://127.0.0.1:5173"},
+		AllowOrigins:     origins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-Bypass-Duplicate", "x-bypass-duplicate"},
 		ExposeHeaders:    []string{"Content-Length"},
