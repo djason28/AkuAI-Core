@@ -30,10 +30,27 @@ func CreateOrAddMessage(db *gorm.DB) gin.HandlerFunc {
 			Message        string `json:"message"`
 			ConversationID *uint  `json:"conversation_id"`
 			RequestImages  bool   `json:"request_images"`
+			Mode           string `json:"mode"` // baseline | engineered
 		}
 		if err := c.ShouldBindJSON(&body); err != nil || strings.TrimSpace(body.Message) == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"msg": "message is required"})
 			return
+		}
+
+		// Determine effective prompt mode
+		effMode := strings.ToLower(strings.TrimSpace(body.Mode))
+		if effMode == "" {
+			effMode = strings.ToLower(strings.TrimSpace(c.GetHeader("X-Prompt-Mode")))
+		}
+		if effMode == "" {
+			effMode = config.PromptMode
+		}
+		if effMode == "both" {
+			// Single-response endpoint defaults to engineered when config allows both
+			effMode = "engineered"
+		}
+		if effMode != "baseline" && effMode != "engineered" {
+			effMode = "engineered"
 		}
 
 		bypass := strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Bypass-Duplicate")), "1") ||
@@ -91,7 +108,7 @@ func CreateOrAddMessage(db *gorm.DB) gin.HandlerFunc {
 		defer cancel()
 
 		botReply := ""
-		// Create cache key - add UIB indicator for better cache management
+		// Create cache key - include mode to avoid cross-contamination
 		cachePrefix := "chat-final"
 		message := strings.ToLower(strings.TrimSpace(body.Message))
 
@@ -99,7 +116,11 @@ func CreateOrAddMessage(db *gorm.DB) gin.HandlerFunc {
 		geminiService := svc.NewGeminiService()
 		if geminiService != nil {
 			// Add version identifier to ensure new UIB logic is used
-			cachePrefix = "chat-uib-v2"
+			if effMode == "engineered" {
+				cachePrefix = "chat-engineered-v1"
+			} else {
+				cachePrefix = "chat-baseline-v1"
+			}
 		}
 
 		key := cache.KeyFromStrings(cachePrefix, uidStr, message)
@@ -109,18 +130,27 @@ func CreateOrAddMessage(db *gorm.DB) gin.HandlerFunc {
 				uidStr, body.Message, time.Since(cacheInfo.CachedAt).Round(time.Second))
 		}
 		if strings.TrimSpace(botReply) == "" {
-			log.Printf("[conversation] 🔵 GENERATING NEW RESPONSE - User: %s, Message: %.50s...", uidStr, body.Message)
+			log.Printf("[conversation] 🔵 GENERATING NEW RESPONSE (%s) - User: %s, Message: %.50s...", effMode, uidStr, body.Message)
 
-			// Try UIB-enhanced method first for better UIB-related responses
-			if resp, err := geminiService.AskCampusWithUIBContext(ctx, history); err == nil && strings.TrimSpace(resp) != "" {
-				botReply = resp
-				log.Printf("[conversation] ✅ UIB-enhanced response generated successfully")
-			} else {
-				// Fallback to regular method
-				log.Printf("[conversation] ⚠️ UIB-enhanced failed (%v), trying regular method", err)
+			if effMode == "engineered" {
+				// Engineered path prioritizes UIB-enhanced prompt
+				if resp, err := geminiService.AskCampusWithUIBContext(ctx, history); err == nil && strings.TrimSpace(resp) != "" {
+					botReply = resp
+					log.Printf("[conversation] ✅ Engineered response generated successfully")
+				} else {
+					log.Printf("[conversation] ⚠️ Engineered failed (%v), trying regular", err)
+					if resp, err := geminiService.AskCampusWithChat(ctx, history); err == nil && strings.TrimSpace(resp) != "" {
+						botReply = resp
+						log.Printf("[conversation] ✅ Regular response generated successfully")
+					}
+				}
+			} else { // baseline
 				if resp, err := geminiService.AskCampusWithChat(ctx, history); err == nil && strings.TrimSpace(resp) != "" {
 					botReply = resp
-					log.Printf("[conversation] ✅ Regular response generated successfully")
+					log.Printf("[conversation] ✅ Baseline response generated successfully")
+				} else {
+					// Fallback to local mock
+					log.Printf("[conversation] ⚠️ Baseline failed (%v), using mock", err)
 				}
 			}
 		}
@@ -175,15 +205,35 @@ func CreateOrAddMessageStream(db *gorm.DB) gin.HandlerFunc {
 			Message        string `json:"message"`
 			ConversationID *uint  `json:"conversation_id"`
 			RequestImages  bool   `json:"request_images"`
+			Mode           string `json:"mode"` // baseline | engineered
 		}
 		if err := c.ShouldBindJSON(&body); err != nil || strings.TrimSpace(body.Message) == "" {
 			c.Status(http.StatusBadRequest)
 			return
 		}
 
+		// Determine effective prompt mode
+		effMode := strings.ToLower(strings.TrimSpace(body.Mode))
+		if effMode == "" {
+			effMode = strings.ToLower(strings.TrimSpace(c.GetHeader("X-Prompt-Mode")))
+		}
+		if effMode == "" {
+			effMode = config.PromptMode
+		}
+		if effMode == "both" {
+			effMode = "engineered"
+		}
+		if effMode != "baseline" && effMode != "engineered" {
+			effMode = "engineered"
+		}
+
 		bypass := strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Bypass-Duplicate")), "1") ||
 			strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Bypass-Duplicate")), "true")
-		cacheKeyDup := cache.KeyFromStrings("chat-uib-v2", uidStr, strings.ToLower(strings.TrimSpace(body.Message)))
+		baseDupPrefix := "chat-engineered-v1"
+		if effMode == "baseline" {
+			baseDupPrefix = "chat-baseline-v1"
+		}
+		cacheKeyDup := cache.KeyFromStrings(baseDupPrefix, uidStr, strings.ToLower(strings.TrimSpace(body.Message)))
 		_, cacheHit := cache.Default().GetChatResponse(cacheKeyDup)
 		if !bypass && !cacheHit {
 			if !middleware.DuplicateGuard(uidStr, body.Message) {
@@ -249,7 +299,7 @@ func CreateOrAddMessageStream(db *gorm.DB) gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 75*time.Second)
 		defer cancel()
 
-		cacheKey := cache.KeyFromStrings("chat-uib-v2", uidStr, strings.ToLower(strings.TrimSpace(body.Message)))
+		cacheKey := cache.KeyFromStrings(baseDupPrefix, uidStr, strings.ToLower(strings.TrimSpace(body.Message)))
 		if v, ok := cache.Default().Get(cacheKey); ok {
 			if s, ok2 := v.(string); ok2 && s != "" {
 				runes := []rune(s)
@@ -267,22 +317,41 @@ func CreateOrAddMessageStream(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		if !gotDelta {
-			// Use UIB-enhanced method instead of regular StreamCampusWithChat
-			if response, err := gsvc.AskCampusWithUIBContext(ctx, history); err == nil && response != "" {
-				// Simulate streaming for UIB response
-				runes := []rune(response)
-				chunk := 28
-				for i := 0; i < len(runes); i += chunk {
-					end := i + chunk
-					if end > len(runes) {
-						end = len(runes)
+			if effMode == "engineered" {
+				// Use UIB-enhanced method instead of regular StreamCampusWithChat
+				if response, err := gsvc.AskCampusWithUIBContext(ctx, history); err == nil && response != "" {
+					// Simulate streaming for UIB response
+					runes := []rune(response)
+					chunk := 28
+					for i := 0; i < len(runes); i += chunk {
+						end := i + chunk
+						if end > len(runes) {
+							end = len(runes)
+						}
+						onDelta(string(runes[i:end]))
+						time.Sleep(12 * time.Millisecond)
 					}
-					onDelta(string(runes[i:end]))
-					time.Sleep(12 * time.Millisecond)
+					gotDelta = true
+				} else {
+					svc.StreamCampusWithChatLocal(c.Request.Context(), history, onDelta)
 				}
-				gotDelta = true
 			} else {
-				svc.StreamCampusWithChatLocal(c.Request.Context(), history, onDelta)
+				// baseline: use regular chat method and simulate streaming
+				if response, err := gsvc.AskCampusWithChat(ctx, history); err == nil && response != "" {
+					runes := []rune(response)
+					chunk := 28
+					for i := 0; i < len(runes); i += chunk {
+						end := i + chunk
+						if end > len(runes) {
+							end = len(runes)
+						}
+						onDelta(string(runes[i:end]))
+						time.Sleep(12 * time.Millisecond)
+					}
+					gotDelta = true
+				} else {
+					svc.StreamCampusWithChatLocal(c.Request.Context(), history, onDelta)
+				}
 			}
 		}
 
@@ -398,7 +467,7 @@ func CreateOrAddMessageStream(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		fmt.Fprintf(c.Writer, "event: done\n")
-		fmt.Fprintf(c.Writer, "data: {\"ok\": true}\n\n")
+		fmt.Fprintf(c.Writer, "data: {\"ok\": true, \"mode\": %s}\n\n", strconv.Quote(effMode))
 		flusher.Flush()
 	}
 }
@@ -547,5 +616,52 @@ func DeleteAllConversations(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"msg": "all conversations deleted"})
+	}
+}
+
+// ComparePromptModes returns both baseline and engineered responses for the same prompt without saving to DB.
+func ComparePromptModes() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body struct {
+			Message string `json:"message"`
+			// Optional: override default timeout seconds
+			Timeout int `json:"timeout_sec"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil || strings.TrimSpace(body.Message) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"msg": "message is required"})
+			return
+		}
+		tSec := body.Timeout
+		if tSec <= 0 || tSec > 120 {
+			tSec = 60
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), time.Duration(tSec)*time.Second)
+		defer cancel()
+
+		gsvc := svc.NewGeminiService()
+		history := []svc.ChatMessage{{Role: "user", Text: body.Message}}
+
+		startEngineered := time.Now()
+		engineered, errE := gsvc.AskCampusWithUIBContext(ctx, history)
+		durEngineered := time.Since(startEngineered)
+
+		startBaseline := time.Now()
+		baseline, errB := gsvc.AskCampusWithChat(ctx, history)
+		durBaseline := time.Since(startBaseline)
+
+		resp := gin.H{
+			"baseline":        strings.TrimSpace(baseline),
+			"engineered":      strings.TrimSpace(engineered),
+			"t_engineered_ms": durEngineered.Milliseconds(),
+			"t_baseline_ms":   durBaseline.Milliseconds(),
+		}
+		if errE != nil {
+			resp["engineered_error"] = errE.Error()
+		}
+		if errB != nil {
+			resp["baseline_error"] = errB.Error()
+		}
+		c.JSON(http.StatusOK, resp)
 	}
 }

@@ -10,12 +10,18 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
 	"AkuAI/pkg/config"
+	"crypto/sha256"
+	"encoding/hex"
+	"path/filepath"
 )
+
+// imports for prompt logging
 
 type GeminiService struct {
 	apiKey     string
@@ -71,7 +77,7 @@ type ChatMessage struct {
 
 func (s *GeminiService) AskCampus(ctx context.Context, question string) (string, error) {
 	// Mock logic: always mock if staging, or if production but disabled
-	if config.IsStaging || (config.IsProduction && !config.IsGeminiEnabled) {
+	if (config.IsStaging && os.Getenv("ABTEST_FORCE_REAL") != "1") || (config.IsProduction && !config.IsGeminiEnabled) {
 		log.Printf("[gemini] MOCK MODE: returning mock chat response")
 		return "[MOCK] Halo! Ini adalah jawaban mock dari Gemini. Silakan tanya apa saja tentang UIB.", nil
 	}
@@ -86,21 +92,25 @@ func (s *GeminiService) AskCampus(ctx context.Context, question string) (string,
 
 	// Check if question is related to UIB and add context if available
 	var prompt string
+	var uibDetected bool
+	var relevantCount int
+	var uibContext string
 	log.Printf("[gemini] 🔍 DEBUGGING - Question: %s", question)
 
 	if s.uibService == nil {
 		log.Printf("[gemini] ❌ UIB service is nil - UIB features disabled")
 	} else {
-		isUIBQuery := s.uibService.AnalyzeQueryForUIB(question)
-		log.Printf("[gemini] 🔍 UIB detection result: %t", isUIBQuery)
+		uibDetected = s.uibService.AnalyzeQueryForUIB(question)
+		log.Printf("[gemini] 🔍 UIB detection result: %t", uibDetected)
 	}
 
-	if s.uibService != nil && s.uibService.AnalyzeQueryForUIB(question) {
+	if s.uibService != nil && uibDetected {
 		log.Printf("[gemini] ✅ UIB-RELATED QUERY DETECTED! Adding UIB context")
 
 		relevantEvents := s.uibService.GetRelevantEventsForQuery(question)
-		log.Printf("[gemini] Found %d relevant UIB events", len(relevantEvents))
-		uibContext := s.uibService.FormatEventsForGemini(relevantEvents)
+		relevantCount = len(relevantEvents)
+		log.Printf("[gemini] Found %d relevant UIB events", relevantCount)
+		uibContext = s.uibService.FormatEventsForGemini(relevantEvents)
 
 		prompt = fmt.Sprintf(`TANGGAL HARI INI: 4 Oktober 2025
 
@@ -113,16 +123,52 @@ INSTRUKSI PENTING:
 2. LANGSUNG berikan SEMUA data yang tersedia sesuai pertanyaan - JANGAN tanya balik atau minta klarifikasi
 3. Jika ditanya tentang sertifikasi/webinar per bulan, tampilkan SEMUA yang ada di bulan tersebut
 4. SELALU gunakan data UIB yang disediakan di atas sebagai sumber utama
-5. Format jawaban dengan struktur jelas: Nama acara, tanggal, waktu, lokasi, biaya, kontak
+5. Format jawaban dengan struktur jelas. Untuk setiap item tampilkan: Nama acara, Tanggal, Waktu, Lokasi, Biaya, Kontak. Jika tautan pendaftaran tidak tersedia, tulis: "tautan tidak tersedia dalam data".
 6. SELALU sebutkan bahwa ini adalah data resmi UIB (UIB_OFFICIAL) 
 7. Jika tidak ada data untuk bulan yang ditanyakan, baru katakan tidak tersedia
 8. JANGAN katakan "memerlukan informasi lebih lanjut" - langsung berikan semua yang ada
-9. Gunakan format: "Berikut sertifikasi UIB untuk [bulan]:" lalu list semua
+9. Jika pertanyaan meminta webinar dan sertifikasi sekaligus, tampilkan KEDUANYA.
+10. Untuk frasa relatif seperti "minggu depan", artikan sebagai rentang Senin–Minggu pekan depan berdasarkan tanggal di atas.
+11. Gunakan format: "Berikut sertifikasi/webinar UIB untuk [bulan/rentang]:" lalu list semua
 
 Pertanyaan: %s`, uibContext, question)
 	} else {
 		log.Printf("[gemini] ❌ NON-UIB QUERY - Using default prompt")
-		prompt = fmt.Sprintf("Jawab secara rinci, terstruktur, dan mudah dipahami tentang informasi kampus. Gunakan Bahasa Indonesia yang jelas. Sertakan poin-poin penting, contoh jika relevan, dan langkah-langkah praktis. Jika ada ketidakpastian, sebutkan asumsi atau saran lanjutan. Pertanyaan: %s", question)
+		prompt = fmt.Sprintf("Jawab secara terstruktur dan ringkas tentang informasi kampus. Gunakan Bahasa Indonesia yang jelas dengan poin-poin. Hindari paragraf panjang yang generik. Sertakan langkah/tautan jika relevan. Jika ada ketidakpastian, sebutkan asumsi singkat. Pertanyaan: %s", question)
+	}
+
+	// Prompt logging for reproducibility
+	runID, _ := ctx.Value("abtest_run_id").(string)
+	mode, _ := ctx.Value("abtest_mode").(string)
+	logFile, _ := ctx.Value("abtest_log_file").(string)
+	logFull, _ := ctx.Value("abtest_log_full").(string)
+	if strings.TrimSpace(logFile) != "" {
+		// choose template id/version based on branch
+		promptTemplateID := "askcampus_generic_v1"
+		if uibDetected {
+			promptTemplateID = "askcampus_uib_v1"
+		}
+		promptTemplateVer := "2025.10.26"
+		entry := map[string]any{
+			"timestamp":               time.Now().Format(time.RFC3339),
+			"run_id":                  runID,
+			"mode":                    mode,
+			"function":                "AskCampus",
+			"model":                   config.GeminiModel,
+			"temperature":             0.4,
+			"uib_detected":            uibDetected,
+			"relevant_events_count":   relevantCount,
+			"question":                question,
+			"prompt_id":               shaHex(prompt),
+			"context_hash":            shaHex(uibContext),
+			"prompt_template_id":      promptTemplateID,
+			"prompt_template_version": promptTemplateVer,
+		}
+		if strings.EqualFold(logFull, "1") || strings.EqualFold(logFull, "true") || strings.EqualFold(logFull, "yes") {
+			entry["prompt"] = prompt
+			entry["context_snapshot"] = uibContext
+		}
+		_ = appendPromptLog(logFile, entry)
 	}
 
 	models := []string{config.GeminiModel, "gemini-2.0-flash"}
@@ -183,11 +229,16 @@ func (s *GeminiService) AskCampusWithChat(ctx context.Context, chat []ChatMessag
 
 	// Check for UIB context and build system instruction
 	var systemInstruction string
+	var uibDetected bool
+	var relevantCount int
+	var uibContext string
 	if s.uibService != nil && s.uibService.AnalyzeQueryForUIB(latestUserQuestion) {
 		log.Printf("[gemini] ✅ UIB-RELATED CHAT QUERY DETECTED! Adding UIB context")
+		uibDetected = true
 		relevantEvents := s.uibService.GetRelevantEventsForQuery(latestUserQuestion)
-		log.Printf("[gemini] Found %d relevant UIB events for chat", len(relevantEvents))
-		uibContext := s.uibService.FormatEventsForGemini(relevantEvents)
+		relevantCount = len(relevantEvents)
+		log.Printf("[gemini] Found %d relevant UIB events for chat", relevantCount)
+		uibContext = s.uibService.FormatEventsForGemini(relevantEvents)
 
 		systemInstruction = fmt.Sprintf(`TANGGAL HARI INI: 4 Oktober 2025
 
@@ -200,11 +251,13 @@ INSTRUKSI PENTING:
 2. LANGSUNG berikan SEMUA data yang tersedia sesuai pertanyaan - JANGAN tanya balik atau minta klarifikasi
 3. Jika ditanya tentang sertifikasi/webinar per bulan, tampilkan SEMUA yang ada di bulan tersebut
 4. SELALU gunakan data UIB yang disediakan di atas sebagai sumber utama
-5. Format jawaban dengan struktur jelas: Nama acara, tanggal, waktu, lokasi, biaya, kontak
+5. Format jawaban dengan struktur jelas. Untuk setiap item tampilkan: Nama acara, Tanggal, Waktu, Lokasi, Biaya, Kontak. Jika tautan pendaftaran tidak tersedia, tulis: "tautan tidak tersedia dalam data".
 6. SELALU sebutkan bahwa ini adalah data resmi UIB (UIB_OFFICIAL) 
 7. Jika tidak ada data untuk bulan yang ditanyakan, baru katakan tidak tersedia
 8. JANGAN katakan "memerlukan informasi lebih lanjut" - langsung berikan semua yang ada
-9. Gunakan format: "Berikut sertifikasi UIB untuk [bulan]:" lalu list semua
+9. Jika pertanyaan meminta webinar dan sertifikasi sekaligus, tampilkan KEDUANYA.
+10. Untuk frasa relatif seperti "minggu depan", artikan sebagai rentang Senin–Minggu pekan depan berdasarkan tanggal di atas.
+11. Gunakan format: "Berikut sertifikasi/webinar UIB untuk [bulan/rentang]:" lalu list semua
 10. Jawab dalam Bahasa Indonesia yang jelas dan terstruktur`, uibContext)
 	} else {
 		log.Printf("[gemini] ❌ NON-UIB CHAT QUERY - Using default system instruction")
@@ -229,13 +282,47 @@ INSTRUKSI PENTING:
 			},
 			"contents": contents,
 			"generationConfig": map[string]any{
-				"temperature":     0.6,
+				"temperature":     0.4,
 				"maxOutputTokens": 2048,
 				"topK":            40,
 				"topP":            0.9,
 			},
 		}
 		return json.Marshal(reqBody)
+	}
+
+	// Prompt logging for reproducibility
+	runID, _ := ctx.Value("abtest_run_id").(string)
+	mode, _ := ctx.Value("abtest_mode").(string)
+	logFile, _ := ctx.Value("abtest_log_file").(string)
+	logFull, _ := ctx.Value("abtest_log_full").(string)
+	if strings.TrimSpace(logFile) != "" {
+		promptTemplateID := "askcampus_chat_generic_v1"
+		if uibDetected {
+			promptTemplateID = "askcampus_chat_uib_v1"
+		}
+		promptTemplateVer := "2025.10.26"
+		entry := map[string]any{
+			"timestamp":               time.Now().Format(time.RFC3339),
+			"run_id":                  runID,
+			"mode":                    mode,
+			"function":                "AskCampusWithChat",
+			"model":                   config.GeminiModel,
+			"temperature":             0.4,
+			"uib_detected":            uibDetected,
+			"relevant_events_count":   relevantCount,
+			"latest_user_question":    latestUserQuestion,
+			"system_instruction_hash": shaHex(systemInstruction),
+			"context_hash":            shaHex(uibContext),
+			"prompt_id":               shaHex(systemInstruction),
+			"prompt_template_id":      promptTemplateID,
+			"prompt_template_version": promptTemplateVer,
+		}
+		if strings.EqualFold(logFull, "1") || strings.EqualFold(logFull, "true") || strings.EqualFold(logFull, "yes") {
+			entry["system_instruction"] = systemInstruction
+			entry["context_snapshot"] = uibContext
+		}
+		_ = appendPromptLog(logFile, entry)
 	}
 
 	for _, m := range models {
@@ -267,6 +354,35 @@ INSTRUKSI PENTING:
 		b.WriteString(fmt.Sprintf("%s -> %v", m, e))
 	}
 	return "", errors.New(b.String())
+}
+
+// Utility: hex-encoded SHA-256 of a string
+func shaHex(s string) string {
+	h := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(h[:])
+}
+
+// Append a JSON object as one line into a log file (creates directories as needed)
+func appendPromptLog(path string, entry map[string]any) error {
+	if strings.TrimSpace(path) == "" {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	b, err := json.Marshal(entry)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(append(b, '\n')); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *GeminiService) StreamCampus(ctx context.Context, question string, onDelta func(string)) (string, error) {
@@ -363,11 +479,13 @@ INSTRUKSI PENTING:
 2. LANGSUNG berikan SEMUA data yang tersedia sesuai pertanyaan - JANGAN tanya balik atau minta klarifikasi
 3. Jika ditanya tentang sertifikasi/webinar per bulan, tampilkan SEMUA yang ada di bulan tersebut
 4. SELALU gunakan data UIB yang disediakan di atas sebagai sumber utama
-5. Format jawaban dengan struktur jelas: Nama acara, tanggal, waktu, lokasi, biaya, kontak
+5. Format jawaban dengan struktur jelas. Untuk setiap item tampilkan: Nama acara, Tanggal, Waktu, Lokasi, Biaya, Kontak. Jika tautan pendaftaran tidak tersedia, tulis: "tautan tidak tersedia dalam data".
 6. SELALU sebutkan bahwa ini adalah data resmi UIB (UIB_OFFICIAL) 
 7. Jika tidak ada data untuk bulan yang ditanyakan, baru katakan tidak tersedia
 8. JANGAN katakan "memerlukan informasi lebih lanjut" - langsung berikan semua yang ada
-9. Gunakan format: "Berikut sertifikasi UIB untuk [bulan]:" lalu list semua
+9. Jika pertanyaan meminta webinar dan sertifikasi sekaligus, tampilkan KEDUANYA.
+10. Untuk frasa relatif seperti "minggu depan", artikan sebagai rentang Senin–Minggu pekan depan berdasarkan tanggal di atas.
+11. Gunakan format: "Berikut sertifikasi/webinar UIB untuk [bulan/rentang]:" lalu list semua
 10. Jawab dalam Bahasa Indonesia yang jelas dan terstruktur`, uibContext)
 	} else {
 		log.Printf("[gemini] ❌ NON-UIB STREAM QUERY - Using default system instruction")
@@ -392,7 +510,7 @@ INSTRUKSI PENTING:
 			},
 			"contents": contents,
 			"generationConfig": map[string]any{
-				"temperature":     0.6,
+				"temperature":     0.4,
 				"maxOutputTokens": 2048,
 				"topK":            40,
 				"topP":            0.9,
@@ -449,7 +567,7 @@ func (s *GeminiService) callGenerateContent(ctx context.Context, model, prompt s
 			},
 		},
 		"generationConfig": map[string]any{
-			"temperature":     0.6,
+			"temperature":     0.4,
 			"maxOutputTokens": 1024,
 			"topK":            40,
 			"topP":            0.9,
@@ -570,7 +688,7 @@ func (s *GeminiService) callStreamGenerateContent(ctx context.Context, model, pr
 			},
 		},
 		"generationConfig": map[string]any{
-			"temperature":     0.6,
+			"temperature":     0.4,
 			"maxOutputTokens": 1024,
 			"topK":            40,
 			"topP":            0.9,
@@ -978,7 +1096,7 @@ Prioritas jawaban: Data UIB lengkap → Informasi umum kampus → Saran kontak U
 			},
 			"contents": contents,
 			"generationConfig": map[string]any{
-				"temperature":     0.6,
+				"temperature":     0.4,
 				"maxOutputTokens": 2048,
 				"topK":            40,
 				"topP":            0.9,

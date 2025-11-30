@@ -1,0 +1,401 @@
+﻿query,mode,rater,relevance,accuracy,completeness,usefulness,json_valid
+Apa saja webinar UIB bulan Oktober 2025?,baseline,Delvin,4,1,3,4,1
+Apa saja webinar UIB bulan Oktober 2025?,baseline,Calvin,4,0,3,3,0
+Apa saja webinar UIB bulan Oktober 2025?,engineered,Delvin,4,1,4,3,1
+Apa saja webinar UIB bulan Oktober 2025?,engineered,Calvin,3,0,3,5,0
+Sertifikasi apa yang tersedia di UIB pada November 2025?,baseline,Delvin,4,0,3,3,1
+Sertifikasi apa yang tersedia di UIB pada November 2025?,baseline,Calvin,2,1,4,4,1
+Sertifikasi apa yang tersedia di UIB pada November 2025?,engineered,Delvin,5,0,3,3,1
+Sertifikasi apa yang tersedia di UIB pada November 2025?,engineered,Calvin,5,1,4,4,1
+Tunjukkan event UIB yang gratis pada Desember 2025.,baseline,Delvin,4,0,3,3,1
+Tunjukkan event UIB yang gratis pada Desember 2025.,baseline,Calvin,3,1,3,3,1
+Tunjukkan event UIB yang gratis pada Desember 2025.,engineered,Delvin,4,0,3,4,1
+Tunjukkan event UIB yang gratis pada Desember 2025.,engineered,Calvin,3,1,4,4,1
+Ada event bertema â€˜Artificial Intelligenceâ€™ di UIB antara Oktoberâ€“Desember 2025?,baseline,Delvin,3,1,4,3,1
+Ada event bertema â€˜Artificial Intelligenceâ€™ di UIB antara Oktoberâ€“Desember 2025?,baseline,Calvin,2,1,4,3,1
+Ada event bertema â€˜Artificial Intelligenceâ€™ di UIB antara Oktoberâ€“Desember 2025?,engineered,Delvin,4,1,5,4,1
+Ada event bertema â€˜Artificial Intelligenceâ€™ di UIB antara Oktoberâ€“Desember 2025?,engineered,Calvin,3,1,5,4,1
+Kapan dan di mana â€˜Sertifikasi Digital Marketing for Businessâ€™ diadakan?,baseline,Delvin,4,1,2,4,1
+Kapan dan di mana â€˜Sertifikasi Digital Marketing for Businessâ€™ diadakan?,baseline,Calvin,4,1,3,4,1
+Kapan dan di mana â€˜Sertifikasi Digital Marketing for Businessâ€™ diadakan?,engineered,Delvin,5,1,3,3,1
+Kapan dan di mana â€˜Sertifikasi Digital Marketing for Businessâ€™ diadakan?,engineered,Calvin,4,1,4,5,1
+Bagaimana cara mendaftar webinar â€˜Future of Artificial Intelligence in Educationâ€™? Sertakan tautan jika ada.,baseline,Delvin,4,1,3,2,1
+Bagaimana cara mendaftar webinar â€˜Future of Artificial Intelligence in Educationâ€™? Sertakan tautan jika ada.,baseline,Calvin,4,1,4,3,1
+Bagaimana cara mendaftar webinar â€˜Future of Artificial Intelligence in Educationâ€™? Sertakan tautan jika ada.,engineered,Delvin,2,1,3,5,1
+Bagaimana cara mendaftar webinar â€˜Future of Artificial Intelligence in Educationâ€™? Sertakan tautan jika ada.,engineered,Calvin,3,1,4,4,1
+Sebutkan 3 event UIB terdekat mulai hari ini.,baseline,Delvin,4,0,1,3,1
+Sebutkan 3 event UIB terdekat mulai hari ini.,baseline,Calvin,3,1,4,4,0
+Sebutkan 3 event UIB terdekat mulai hari ini.,engineered,Delvin,4,1,3,4,1
+Sebutkan 3 event UIB terdekat mulai hari ini.,engineered,Calvin,4,0,3,3,1
+Daftar semua event UIB bulan November 2025 beserta tanggal dan lokasi.,baseline,Delvin,3,1,3,4,0
+Daftar semua event UIB bulan November 2025 beserta tanggal dan lokasi.,baseline,Calvin,4,1,3,3,1
+Daftar semua event UIB bulan November 2025 beserta tanggal dan lokasi.,engineered,Delvin,5,1,3,3,1
+Daftar semua event UIB bulan November 2025 beserta tanggal dan lokasi.,engineered,Calvin,4,1,4,4,1
+Apa kontak resmi UIB untuk informasi event dan situs rujukannya?,baseline,Delvin,3,1,2,3,1
+Apa kontak resmi UIB untuk informasi event dan situs rujukannya?,baseline,Calvin,3,1,3,4,1
+Apa kontak resmi UIB untuk informasi event dan situs rujukannya?,engineered,Delvin,4,0,4,3,1
+Apa kontak resmi UIB untuk informasi event dan situs rujukannya?,engineered,Calvin,3,1,4,3,1
+Ada acara di bulan 11?,baseline,Delvin,3,1,4,3,1
+Ada acara di bulan 11?,baseline,Calvin,3,1,3,4,1
+Ada acara di bulan 11?,engineered,Delvin,4,1,3,5,1
+Ada acara di bulan 11?,engineered,Calvin,4,1,3,3,1
+Ada acara minggu depan? (tolong sebutkan tanggalnya),baseline,Delvin,4,0,3,3,0
+Ada acara minggu depan? (tolong sebutkan tanggalnya),baseline,Calvin,4,0,5,5,1
+Ada acara minggu depan? (tolong sebutkan tanggalnya),engineered,Delvin,3,1,4,3,1
+Ada acara minggu depan? (tolong sebutkan tanggalnya),engineered,Calvin,4,1,4,4,1
+Kapan seminar UIB berikutnya? Jika lebih dari satu, pilih yang paling dekat.,baseline,Delvin,4,1,4,3,0
+Kapan seminar UIB berikutnya? Jika lebih dari satu, pilih yang paling dekat.,baseline,Calvin,3,0,3,2,1
+Kapan seminar UIB berikutnya? Jika lebih dari satu, pilih yang paling dekat.,engineered,Delvin,3,1,4,3,1
+Kapan seminar UIB berikutnya? Jika lebih dari satu, pilih yang paling dekat.,engineered,Calvin,3,1,3,5,1
+Urutkan event UIB Oktober 2025 berdasarkan tanggal (awal â†’ akhir).,baseline,Delvin,2,0,5,3,1
+Urutkan event UIB Oktober 2025 berdasarkan tanggal (awal â†’ akhir).,baseline,Calvin,3,1,4,5,1
+Urutkan event UIB Oktober 2025 berdasarkan tanggal (awal â†’ akhir).,engineered,Delvin,3,1,4,5,1
+Urutkan event UIB Oktober 2025 berdasarkan tanggal (awal â†’ akhir).,engineered,Calvin,4,0,4,4,1
+Tampilkan event UIB bertipe â€˜webinarâ€™ dan â€˜certificationâ€™ di November 2025, pisahkan per tipe.,baseline,Delvin,3,1,3,4,1
+Tampilkan event UIB bertipe â€˜webinarâ€™ dan â€˜certificationâ€™ di November 2025, pisahkan per tipe.,baseline,Calvin,3,1,4,2,1
+Tampilkan event UIB bertipe â€˜webinarâ€™ dan â€˜certificationâ€™ di November 2025, pisahkan per tipe.,engineered,Delvin,4,1,4,3,1
+Tampilkan event UIB bertipe â€˜webinarâ€™ dan â€˜certificationâ€™ di November 2025, pisahkan per tipe.,engineered,Calvin,3,0,5,4,1
+Ringkas event UIB per bulan (Oktober, November, Desember 2025) dalam bullet singkat.,baseline,Delvin,4,1,3,3,0
+Ringkas event UIB per bulan (Oktober, November, Desember 2025) dalam bullet singkat.,baseline,Calvin,4,0,4,3,0
+Ringkas event UIB per bulan (Oktober, November, Desember 2025) dalam bullet singkat.,engineered,Delvin,3,1,4,4,1
+Ringkas event UIB per bulan (Oktober, November, Desember 2025) dalam bullet singkat.,engineered,Calvin,3,1,3,4,1
+Sebutkan lokasi setiap event UIB di November 2025 (gedung/ruang).,baseline,Delvin,3,1,4,4,1
+Sebutkan lokasi setiap event UIB di November 2025 (gedung/ruang).,baseline,Calvin,3,1,3,4,0
+Sebutkan lokasi setiap event UIB di November 2025 (gedung/ruang).,engineered,Delvin,3,1,3,4,1
+Sebutkan lokasi setiap event UIB di November 2025 (gedung/ruang).,engineered,Calvin,4,1,3,5,1
+Rekomendasikan event UIB paling relevan untuk mahasiswa baru pada November 2025 (berdasarkan judul/deskripsi) dan jelaskan alasannya singkat.,baseline,Delvin,3,0,3,4,1
+Rekomendasikan event UIB paling relevan untuk mahasiswa baru pada November 2025 (berdasarkan judul/deskripsi) dan jelaskan alasannya singkat.,baseline,Calvin,3,1,5,5,1
+Rekomendasikan event UIB paling relevan untuk mahasiswa baru pada November 2025 (berdasarkan judul/deskripsi) dan jelaskan alasannya singkat.,engineered,Delvin,4,1,5,3,1
+Rekomendasikan event UIB paling relevan untuk mahasiswa baru pada November 2025 (berdasarkan judul/deskripsi) dan jelaskan alasannya singkat.,engineered,Calvin,3,1,3,4,1
+Tampilkan 3 gambar kampus UIB bertopik â€˜UIB Towerâ€™.,baseline,Delvin,3,1,3,4,1
+Tampilkan 3 gambar kampus UIB bertopik â€˜UIB Towerâ€™.,baseline,Calvin,4,1,2,3,1
+Tampilkan 3 gambar kampus UIB bertopik â€˜UIB Towerâ€™.,engineered,Delvin,4,1,5,5,0
+Tampilkan 3 gambar kampus UIB bertopik â€˜UIB Towerâ€™.,engineered,Calvin,3,0,4,4,1
+Cari 3 gambar â€˜kampus UIBâ€™ dan tampilkan sumbernya.,baseline,Delvin,3,0,3,4,1
+Cari 3 gambar â€˜kampus UIBâ€™ dan tampilkan sumbernya.,baseline,Calvin,5,1,3,3,1
+Cari 3 gambar â€˜kampus UIBâ€™ dan tampilkan sumbernya.,engineered,Delvin,4,1,4,5,1
+Cari 3 gambar â€˜kampus UIBâ€™ dan tampilkan sumbernya.,engineered,Calvin,3,1,4,4,1
+webinar uib nov 2025 apa aja?,baseline,Delvin,3,1,3,3,1
+webinar uib nov 2025 apa aja?,baseline,Calvin,3,1,4,3,1
+webinar uib nov 2025 apa aja?,engineered,Delvin,4,1,3,4,1
+webinar uib nov 2025 apa aja?,engineered,Calvin,5,1,4,4,1
+Event UIB apa saja yang berbayar di Oktober 2025? Sertakan biaya jika ada.,baseline,Delvin,4,1,4,2,1
+Event UIB apa saja yang berbayar di Oktober 2025? Sertakan biaya jika ada.,baseline,Calvin,4,1,3,3,1
+Event UIB apa saja yang berbayar di Oktober 2025? Sertakan biaya jika ada.,engineered,Delvin,4,0,3,3,1
+Event UIB apa saja yang berbayar di Oktober 2025? Sertakan biaya jika ada.,engineered,Calvin,5,1,4,3,1
+Filter event November 2025 yang lokasinya di kampus utama (sebutkan gedung/ruang).,baseline,Delvin,3,1,4,4,1
+Filter event November 2025 yang lokasinya di kampus utama (sebutkan gedung/ruang).,baseline,Calvin,1,1,3,3,1
+Filter event November 2025 yang lokasinya di kampus utama (sebutkan gedung/ruang).,engineered,Delvin,4,1,4,4,1
+Filter event November 2025 yang lokasinya di kampus utama (sebutkan gedung/ruang).,engineered,Calvin,4,1,5,4,1
+Apakah ada event hibrida (online & offline) di Desember 2025?,baseline,Delvin,4,1,3,3,1
+Apakah ada event hibrida (online & offline) di Desember 2025?,baseline,Calvin,3,0,3,3,1
+Apakah ada event hibrida (online & offline) di Desember 2025?,engineered,Delvin,3,1,4,4,1
+Apakah ada event hibrida (online & offline) di Desember 2025?,engineered,Calvin,4,1,4,3,1
+Tampilkan semua sertifikasi di Q4 2025, kelompokkan per bulan.,baseline,Delvin,4,1,4,2,1
+Tampilkan semua sertifikasi di Q4 2025, kelompokkan per bulan.,baseline,Calvin,3,1,2,3,0
+Tampilkan semua sertifikasi di Q4 2025, kelompokkan per bulan.,engineered,Delvin,3,0,4,5,1
+Tampilkan semua sertifikasi di Q4 2025, kelompokkan per bulan.,engineered,Calvin,4,1,5,4,1
+Sebutkan event UIB yang berlangsung pada akhir pekan (Sabtu/Minggu) bulan November 2025.,baseline,Delvin,3,1,2,3,1
+Sebutkan event UIB yang berlangsung pada akhir pekan (Sabtu/Minggu) bulan November 2025.,baseline,Calvin,3,1,4,4,1
+Sebutkan event UIB yang berlangsung pada akhir pekan (Sabtu/Minggu) bulan November 2025.,engineered,Delvin,4,1,3,3,1
+Sebutkan event UIB yang berlangsung pada akhir pekan (Sabtu/Minggu) bulan November 2025.,engineered,Calvin,5,1,4,4,1
+Beri saya jadwal lengkap webinar UIB di minggu depan (Seninâ€“Minggu).,baseline,Delvin,4,1,4,3,1
+Beri saya jadwal lengkap webinar UIB di minggu depan (Seninâ€“Minggu).,baseline,Calvin,4,1,3,4,1
+Beri saya jadwal lengkap webinar UIB di minggu depan (Seninâ€“Minggu).,engineered,Delvin,5,1,4,4,1
+Beri saya jadwal lengkap webinar UIB di minggu depan (Seninâ€“Minggu).,engineered,Calvin,4,1,3,4,1
+Tolong buat daftar event â€˜cybersecurityâ€™ di Oktoberâ€“Desember 2025.,baseline,Delvin,3,0,3,2,1
+Tolong buat daftar event â€˜cybersecurityâ€™ di Oktoberâ€“Desember 2025.,baseline,Calvin,4,1,3,3,1
+Tolong buat daftar event â€˜cybersecurityâ€™ di Oktoberâ€“Desember 2025.,engineered,Delvin,4,1,4,5,1
+Tolong buat daftar event â€˜cybersecurityâ€™ di Oktoberâ€“Desember 2025.,engineered,Calvin,3,0,3,4,0
+Apakah ada event dengan kuota terbatas? Jelaskan cara pendaftarannya jika tersedia.,baseline,Delvin,3,1,3,4,1
+Apakah ada event dengan kuota terbatas? Jelaskan cara pendaftarannya jika tersedia.,baseline,Calvin,3,1,3,3,1
+Apakah ada event dengan kuota terbatas? Jelaskan cara pendaftarannya jika tersedia.,engineered,Delvin,3,1,4,3,1
+Apakah ada event dengan kuota terbatas? Jelaskan cara pendaftarannya jika tersedia.,engineered,Calvin,5,1,4,3,1
+Tampilkan 5 event teratas berdasarkan kedekatan tanggal dari hari ini.,baseline,Delvin,4,1,4,4,0
+Tampilkan 5 event teratas berdasarkan kedekatan tanggal dari hari ini.,baseline,Calvin,3,0,3,3,1
+Tampilkan 5 event teratas berdasarkan kedekatan tanggal dari hari ini.,engineered,Delvin,4,1,4,4,1
+Tampilkan 5 event teratas berdasarkan kedekatan tanggal dari hari ini.,engineered,Calvin,4,1,5,4,1
+Apakah ada event yang mewajibkan pendaftaran melalui Google Form? Sertakan tautannya.,baseline,Delvin,3,1,4,3,1
+Apakah ada event yang mewajibkan pendaftaran melalui Google Form? Sertakan tautannya.,baseline,Calvin,2,1,1,2,0
+Apakah ada event yang mewajibkan pendaftaran melalui Google Form? Sertakan tautannya.,engineered,Delvin,4,0,3,4,1
+Apakah ada event yang mewajibkan pendaftaran melalui Google Form? Sertakan tautannya.,engineered,Calvin,3,1,4,4,1
+Beri format JSON berisi {title, date, time, location} untuk webinar November 2025.,baseline,Delvin,2,1,4,3,1
+Beri format JSON berisi {title, date, time, location} untuk webinar November 2025.,baseline,Calvin,3,1,3,3,1
+Beri format JSON berisi {title, date, time, location} untuk webinar November 2025.,engineered,Delvin,4,0,3,4,1
+Beri format JSON berisi {title, date, time, location} untuk webinar November 2025.,engineered,Calvin,4,1,4,3,1
+Buat tabel ringkas (markdown) event sertifikasi di Desember 2025 dengan kolom: Nama, Tanggal, Lokasi, Biaya.,baseline,Delvin,3,1,2,4,0
+Buat tabel ringkas (markdown) event sertifikasi di Desember 2025 dengan kolom: Nama, Tanggal, Lokasi, Biaya.,baseline,Calvin,5,1,3,3,1
+Buat tabel ringkas (markdown) event sertifikasi di Desember 2025 dengan kolom: Nama, Tanggal, Lokasi, Biaya.,engineered,Delvin,3,1,4,3,0
+Buat tabel ringkas (markdown) event sertifikasi di Desember 2025 dengan kolom: Nama, Tanggal, Lokasi, Biaya.,engineered,Calvin,4,1,4,4,1
+Saya hanya ingin event gratis bulan Oktober 2025 yang bertema teknologi.,baseline,Delvin,3,1,3,4,1
+Saya hanya ingin event gratis bulan Oktober 2025 yang bertema teknologi.,baseline,Calvin,5,1,4,3,0
+Saya hanya ingin event gratis bulan Oktober 2025 yang bertema teknologi.,engineered,Delvin,4,1,4,3,1
+Saya hanya ingin event gratis bulan Oktober 2025 yang bertema teknologi.,engineered,Calvin,5,1,4,4,1
+Ada kegiatan pendaftaran lomba yang dibuka di November 2025?,baseline,Delvin,3,0,3,4,1
+Ada kegiatan pendaftaran lomba yang dibuka di November 2025?,baseline,Calvin,3,1,2,4,1
+Ada kegiatan pendaftaran lomba yang dibuka di November 2025?,engineered,Delvin,4,0,3,4,1
+Ada kegiatan pendaftaran lomba yang dibuka di November 2025?,engineered,Calvin,3,1,4,3,1
+Apakah ada event UIB yang relevan untuk siswa SMA kelas 12 di bulan Desember 2025?,baseline,Delvin,5,1,3,3,1
+Apakah ada event UIB yang relevan untuk siswa SMA kelas 12 di bulan Desember 2025?,baseline,Calvin,3,1,3,4,1
+Apakah ada event UIB yang relevan untuk siswa SMA kelas 12 di bulan Desember 2025?,engineered,Delvin,4,1,4,5,1
+Apakah ada event UIB yang relevan untuk siswa SMA kelas 12 di bulan Desember 2025?,engineered,Calvin,4,1,4,3,1
+Daftar event yang berlangsung setelah 15 November 2025.,baseline,Delvin,3,1,4,3,1
+Daftar event yang berlangsung setelah 15 November 2025.,baseline,Calvin,3,1,2,3,1
+Daftar event yang berlangsung setelah 15 November 2025.,engineered,Delvin,4,1,4,3,1
+Daftar event yang berlangsung setelah 15 November 2025.,engineered,Calvin,4,1,4,3,0
+Tampilkan event yang berada di luar kampus UIB (jika ada) pada Q4 2025.,baseline,Delvin,4,1,3,3,1
+Tampilkan event yang berada di luar kampus UIB (jika ada) pada Q4 2025.,baseline,Calvin,4,1,3,3,1
+Tampilkan event yang berada di luar kampus UIB (jika ada) pada Q4 2025.,engineered,Delvin,4,1,3,3,0
+Tampilkan event yang berada di luar kampus UIB (jika ada) pada Q4 2025.,engineered,Calvin,4,1,2,4,1
+Saya ingin 3 rekomendasi event paling bermanfaat untuk persiapan karir di November 2025 beserta alasannya.,baseline,Delvin,4,0,3,3,1
+Saya ingin 3 rekomendasi event paling bermanfaat untuk persiapan karir di November 2025 beserta alasannya.,baseline,Calvin,3,1,3,4,1
+Saya ingin 3 rekomendasi event paling bermanfaat untuk persiapan karir di November 2025 beserta alasannya.,engineered,Delvin,4,1,5,3,0
+Saya ingin 3 rekomendasi event paling bermanfaat untuk persiapan karir di November 2025 beserta alasannya.,engineered,Calvin,4,1,3,3,1
+Kelompokkan event November 2025 berdasarkan tipe: {webinar, workshop, certification, seminar}.,baseline,Delvin,3,1,5,4,1
+Kelompokkan event November 2025 berdasarkan tipe: {webinar, workshop, certification, seminar}.,baseline,Calvin,3,1,3,4,1
+Kelompokkan event November 2025 berdasarkan tipe: {webinar, workshop, certification, seminar}.,engineered,Delvin,4,1,3,4,1
+Kelompokkan event November 2025 berdasarkan tipe: {webinar, workshop, certification, seminar}.,engineered,Calvin,3,1,5,3,1
+Tolong urutkan event Desember 2025 berdasarkan waktu mulai (pagiâ†’malam).,baseline,Delvin,3,0,3,4,1
+Tolong urutkan event Desember 2025 berdasarkan waktu mulai (pagiâ†’malam).,baseline,Calvin,3,1,4,2,1
+Tolong urutkan event Desember 2025 berdasarkan waktu mulai (pagiâ†’malam).,engineered,Delvin,4,1,4,4,1
+Tolong urutkan event Desember 2025 berdasarkan waktu mulai (pagiâ†’malam).,engineered,Calvin,4,1,4,4,1
+Apakah ada event yang menyediakan e-certificate?,baseline,Delvin,4,1,3,3,1
+Apakah ada event yang menyediakan e-certificate?,baseline,Calvin,3,0,3,3,1
+Apakah ada event yang menyediakan e-certificate?,engineered,Delvin,2,1,4,5,1
+Apakah ada event yang menyediakan e-certificate?,engineered,Calvin,5,1,3,4,1
+Sebutkan event yang berdurasi lebih dari 2 jam di Oktober 2025.,baseline,Delvin,4,0,3,2,1
+Sebutkan event yang berdurasi lebih dari 2 jam di Oktober 2025.,baseline,Calvin,2,1,3,3,1
+Sebutkan event yang berdurasi lebih dari 2 jam di Oktober 2025.,engineered,Delvin,4,1,2,5,1
+Sebutkan event yang berdurasi lebih dari 2 jam di Oktober 2025.,engineered,Calvin,4,1,3,3,1
+Tampilkan event UIB yang diselenggarakan oleh fakultas teknik pada November 2025 (jika ada).,baseline,Delvin,2,1,4,3,1
+Tampilkan event UIB yang diselenggarakan oleh fakultas teknik pada November 2025 (jika ada).,baseline,Calvin,2,1,4,4,1
+Tampilkan event UIB yang diselenggarakan oleh fakultas teknik pada November 2025 (jika ada).,engineered,Delvin,4,1,4,4,1
+Tampilkan event UIB yang diselenggarakan oleh fakultas teknik pada November 2025 (jika ada).,engineered,Calvin,3,1,3,5,1
+Apakah ada event bilingual (ID/EN) di Q4 2025?,baseline,Delvin,5,0,2,3,1
+Apakah ada event bilingual (ID/EN) di Q4 2025?,baseline,Calvin,3,1,3,3,1
+Apakah ada event bilingual (ID/EN) di Q4 2025?,engineered,Delvin,5,1,3,4,1
+Apakah ada event bilingual (ID/EN) di Q4 2025?,engineered,Calvin,4,1,5,5,1
+Cek event yang ada di tanggal 10â€“20 November 2025.,baseline,Delvin,4,1,1,4,1
+Cek event yang ada di tanggal 10â€“20 November 2025.,baseline,Calvin,3,1,3,3,1
+Cek event yang ada di tanggal 10â€“20 November 2025.,engineered,Delvin,3,1,3,4,1
+Cek event yang ada di tanggal 10â€“20 November 2025.,engineered,Calvin,3,1,5,4,1
+Apa ada sesi tanya jawab (Q&A) pada webinar UIB bulan ini?,baseline,Delvin,4,1,4,4,1
+Apa ada sesi tanya jawab (Q&A) pada webinar UIB bulan ini?,baseline,Calvin,4,1,3,5,1
+Apa ada sesi tanya jawab (Q&A) pada webinar UIB bulan ini?,engineered,Delvin,3,1,4,4,1
+Apa ada sesi tanya jawab (Q&A) pada webinar UIB bulan ini?,engineered,Calvin,4,1,3,4,1
+Berikan daftar event dengan kontak narahubung yang jelas (nama/WA/email).,baseline,Delvin,3,0,2,4,1
+Berikan daftar event dengan kontak narahubung yang jelas (nama/WA/email).,baseline,Calvin,3,1,2,3,0
+Berikan daftar event dengan kontak narahubung yang jelas (nama/WA/email).,engineered,Delvin,3,1,3,5,0
+Berikan daftar event dengan kontak narahubung yang jelas (nama/WA/email).,engineered,Calvin,5,1,4,4,1
+Apakah ada event UIB yang bertopik â€˜startupâ€™ pada Desember 2025?,baseline,Delvin,3,0,3,3,1
+Apakah ada event UIB yang bertopik â€˜startupâ€™ pada Desember 2025?,baseline,Calvin,3,1,3,4,0
+Apakah ada event UIB yang bertopik â€˜startupâ€™ pada Desember 2025?,engineered,Delvin,4,1,4,4,1
+Apakah ada event UIB yang bertopik â€˜startupâ€™ pada Desember 2025?,engineered,Calvin,2,1,4,5,1
+Sertifikasi UIB yang paling cepat pendaftarannya tutup pada November 2025 apa?,baseline,Delvin,4,0,3,4,1
+Sertifikasi UIB yang paling cepat pendaftarannya tutup pada November 2025 apa?,baseline,Calvin,4,0,4,4,1
+Sertifikasi UIB yang paling cepat pendaftarannya tutup pada November 2025 apa?,engineered,Delvin,3,0,3,4,0
+Sertifikasi UIB yang paling cepat pendaftarannya tutup pada November 2025 apa?,engineered,Calvin,4,0,3,3,1
+Jika saya hanya punya waktu hari Sabtu, event apa yang bisa saya ikuti di November 2025?,baseline,Delvin,3,1,3,4,1
+Jika saya hanya punya waktu hari Sabtu, event apa yang bisa saya ikuti di November 2025?,baseline,Calvin,2,1,4,3,1
+Jika saya hanya punya waktu hari Sabtu, event apa yang bisa saya ikuti di November 2025?,engineered,Delvin,3,1,4,3,1
+Jika saya hanya punya waktu hari Sabtu, event apa yang bisa saya ikuti di November 2025?,engineered,Calvin,3,1,4,5,0
+Tampilkan event yang menyediakan materi/slide unduhan setelah acara.,baseline,Delvin,4,1,3,4,1
+Tampilkan event yang menyediakan materi/slide unduhan setelah acara.,baseline,Calvin,4,0,4,4,0
+Tampilkan event yang menyediakan materi/slide unduhan setelah acara.,engineered,Delvin,3,1,4,4,1
+Tampilkan event yang menyediakan materi/slide unduhan setelah acara.,engineered,Calvin,4,1,3,4,1
+mau ikut webinar bulan 11, apa yang paling dekat tanggalnya?,baseline,Delvin,4,0,4,3,1
+mau ikut webinar bulan 11, apa yang paling dekat tanggalnya?,baseline,Calvin,3,1,3,4,1
+mau ikut webinar bulan 11, apa yang paling dekat tanggalnya?,engineered,Delvin,5,1,4,3,1
+mau ikut webinar bulan 11, apa yang paling dekat tanggalnya?,engineered,Calvin,4,1,4,4,1
+list-in tanggal, waktu, lokasi untuk semua webinar oktober 2025 (tanpa deskripsi panjang).,baseline,Delvin,3,1,4,4,1
+list-in tanggal, waktu, lokasi untuk semua webinar oktober 2025 (tanpa deskripsi panjang).,baseline,Calvin,4,1,2,3,1
+list-in tanggal, waktu, lokasi untuk semua webinar oktober 2025 (tanpa deskripsi panjang).,engineered,Delvin,3,1,5,4,1
+list-in tanggal, waktu, lokasi untuk semua webinar oktober 2025 (tanpa deskripsi panjang).,engineered,Calvin,4,1,4,5,1
+Bikin ringkasannya saja: 3 poin inti untuk event di Desember 2025.,baseline,Delvin,4,1,3,3,0
+Bikin ringkasannya saja: 3 poin inti untuk event di Desember 2025.,baseline,Calvin,3,1,4,4,0
+Bikin ringkasannya saja: 3 poin inti untuk event di Desember 2025.,engineered,Delvin,4,1,4,5,0
+Bikin ringkasannya saja: 3 poin inti untuk event di Desember 2025.,engineered,Calvin,4,0,3,4,1
+Apakah ada event bertema AI/ML di bulan 10 atau 12? (abaikan November),baseline,Delvin,2,1,4,3,1
+Apakah ada event bertema AI/ML di bulan 10 atau 12? (abaikan November),baseline,Calvin,3,1,3,4,0
+Apakah ada event bertema AI/ML di bulan 10 atau 12? (abaikan November),engineered,Delvin,5,1,5,4,1
+Apakah ada event bertema AI/ML di bulan 10 atau 12? (abaikan November),engineered,Calvin,3,1,5,4,1
+Tolong bedakan event internal UIB vs umum (jika diketahui) untuk November 2025.,baseline,Delvin,4,0,3,2,1
+Tolong bedakan event internal UIB vs umum (jika diketahui) untuk November 2025.,baseline,Calvin,4,0,2,3,1
+Tolong bedakan event internal UIB vs umum (jika diketahui) untuk November 2025.,engineered,Delvin,3,1,5,4,1
+Tolong bedakan event internal UIB vs umum (jika diketahui) untuk November 2025.,engineered,Calvin,5,1,5,4,1
+Saya butuh event yang tidak bentrok dengan jam kuliah pagi (mulai â‰¥ 13:00) bulan November 2025.,baseline,Delvin,4,1,4,2,0
+Saya butuh event yang tidak bentrok dengan jam kuliah pagi (mulai â‰¥ 13:00) bulan November 2025.,baseline,Calvin,4,1,4,3,1
+Saya butuh event yang tidak bentrok dengan jam kuliah pagi (mulai â‰¥ 13:00) bulan November 2025.,engineered,Delvin,5,0,4,5,1
+Saya butuh event yang tidak bentrok dengan jam kuliah pagi (mulai â‰¥ 13:00) bulan November 2025.,engineered,Calvin,3,1,3,4,1
+Sebutkan semua event yang punya batas kuota peserta.,baseline,Delvin,3,0,3,4,1
+Sebutkan semua event yang punya batas kuota peserta.,baseline,Calvin,4,1,4,2,1
+Sebutkan semua event yang punya batas kuota peserta.,engineered,Delvin,4,1,4,2,1
+Sebutkan semua event yang punya batas kuota peserta.,engineered,Calvin,3,1,3,5,1
+Berikan 2 alternatif event jika acara yang saya inginkan penuh.,baseline,Delvin,2,1,3,2,1
+Berikan 2 alternatif event jika acara yang saya inginkan penuh.,baseline,Calvin,3,1,3,3,1
+Berikan 2 alternatif event jika acara yang saya inginkan penuh.,engineered,Delvin,5,0,3,4,1
+Berikan 2 alternatif event jika acara yang saya inginkan penuh.,engineered,Calvin,5,1,4,3,1
+Tampilkan event yang berlangsung sore/malam (â‰¥ 17:00) di Desember 2025.,baseline,Delvin,4,1,4,2,1
+Tampilkan event yang berlangsung sore/malam (â‰¥ 17:00) di Desember 2025.,baseline,Calvin,3,1,4,4,0
+Tampilkan event yang berlangsung sore/malam (â‰¥ 17:00) di Desember 2025.,engineered,Delvin,4,1,4,4,1
+Tampilkan event yang berlangsung sore/malam (â‰¥ 17:00) di Desember 2025.,engineered,Calvin,4,0,4,5,1
+webinar uib nov25 yang gratis apa aja?,baseline,Delvin,3,0,3,4,1
+webinar uib nov25 yang gratis apa aja?,baseline,Calvin,3,1,2,5,1
+webinar uib nov25 yang gratis apa aja?,engineered,Delvin,4,1,5,3,1
+webinar uib nov25 yang gratis apa aja?,engineered,Calvin,4,1,4,4,0
+Ada info pendaftaran untuk sertifikasi di minggu depan?,baseline,Delvin,4,1,2,4,1
+Ada info pendaftaran untuk sertifikasi di minggu depan?,baseline,Calvin,2,0,3,3,1
+Ada info pendaftaran untuk sertifikasi di minggu depan?,engineered,Delvin,3,1,4,3,1
+Ada info pendaftaran untuk sertifikasi di minggu depan?,engineered,Calvin,4,0,3,5,1
+Kelompokkan per lokasi kampus (misal UIB Tower, Auditorium, Aula) untuk event November 2025.,baseline,Delvin,4,1,3,3,1
+Kelompokkan per lokasi kampus (misal UIB Tower, Auditorium, Aula) untuk event November 2025.,baseline,Calvin,3,1,3,4,1
+Kelompokkan per lokasi kampus (misal UIB Tower, Auditorium, Aula) untuk event November 2025.,engineered,Delvin,4,1,4,3,1
+Kelompokkan per lokasi kampus (misal UIB Tower, Auditorium, Aula) untuk event November 2025.,engineered,Calvin,3,0,4,3,0
+Apakah ada tur kampus (campus tour) di Q4 2025?,baseline,Delvin,4,1,3,2,0
+Apakah ada tur kampus (campus tour) di Q4 2025?,baseline,Calvin,3,1,4,3,1
+Apakah ada tur kampus (campus tour) di Q4 2025?,engineered,Delvin,4,1,3,4,1
+Apakah ada tur kampus (campus tour) di Q4 2025?,engineered,Calvin,4,1,4,4,1
+Beri saya event 1 hari (bukan berseri) pada Oktober 2025.,baseline,Delvin,4,1,3,5,1
+Beri saya event 1 hari (bukan berseri) pada Oktober 2025.,baseline,Calvin,3,1,2,4,0
+Beri saya event 1 hari (bukan berseri) pada Oktober 2025.,engineered,Delvin,4,1,3,4,1
+Beri saya event 1 hari (bukan berseri) pada Oktober 2025.,engineered,Calvin,3,1,4,3,1
+Tampilkan event yang berlangsung lebih dari 1 hari di Desember 2025.,baseline,Delvin,4,1,3,3,1
+Tampilkan event yang berlangsung lebih dari 1 hari di Desember 2025.,baseline,Calvin,3,1,3,3,1
+Tampilkan event yang berlangsung lebih dari 1 hari di Desember 2025.,engineered,Delvin,4,1,4,5,1
+Tampilkan event yang berlangsung lebih dari 1 hari di Desember 2025.,engineered,Calvin,4,0,4,4,1
+Apakah ada event kolaborasi dengan kampus lain atau industri?,baseline,Delvin,3,1,3,2,1
+Apakah ada event kolaborasi dengan kampus lain atau industri?,baseline,Calvin,4,0,3,4,1
+Apakah ada event kolaborasi dengan kampus lain atau industri?,engineered,Delvin,4,1,3,3,1
+Apakah ada event kolaborasi dengan kampus lain atau industri?,engineered,Calvin,4,1,4,5,1
+Tolong validasi apakah ada event yang dijadwalkan ulang di Q4 2025.,baseline,Delvin,5,1,2,4,1
+Tolong validasi apakah ada event yang dijadwalkan ulang di Q4 2025.,baseline,Calvin,3,1,4,5,1
+Tolong validasi apakah ada event yang dijadwalkan ulang di Q4 2025.,engineered,Delvin,4,1,4,3,1
+Tolong validasi apakah ada event yang dijadwalkan ulang di Q4 2025.,engineered,Calvin,4,1,4,5,0
+Sebutkan event yang relevan untuk jurusan Sistem Informasi (kalau ada).,baseline,Delvin,4,1,4,4,1
+Sebutkan event yang relevan untuk jurusan Sistem Informasi (kalau ada).,baseline,Calvin,3,1,5,4,1
+Sebutkan event yang relevan untuk jurusan Sistem Informasi (kalau ada).,engineered,Delvin,3,1,4,3,1
+Sebutkan event yang relevan untuk jurusan Sistem Informasi (kalau ada).,engineered,Calvin,4,1,4,4,1
+Saya ingin daftar semua event dengan biaya < Rp100.000 di November 2025.,baseline,Delvin,3,1,5,4,1
+Saya ingin daftar semua event dengan biaya < Rp100.000 di November 2025.,baseline,Calvin,4,0,4,3,1
+Saya ingin daftar semua event dengan biaya < Rp100.000 di November 2025.,engineered,Delvin,3,1,3,4,0
+Saya ingin daftar semua event dengan biaya < Rp100.000 di November 2025.,engineered,Calvin,2,1,4,4,1
+Urutkan event berdasarkan biaya (termurahâ†’termahal) bulan Desember 2025.,baseline,Delvin,3,1,4,3,1
+Urutkan event berdasarkan biaya (termurahâ†’termahal) bulan Desember 2025.,baseline,Calvin,3,1,3,4,1
+Urutkan event berdasarkan biaya (termurahâ†’termahal) bulan Desember 2025.,engineered,Delvin,4,1,5,3,1
+Urutkan event berdasarkan biaya (termurahâ†’termahal) bulan Desember 2025.,engineered,Calvin,4,1,4,4,1
+Event apa saja yang butuh registrasi H-1 sebelum acara?,baseline,Delvin,3,1,3,3,1
+Event apa saja yang butuh registrasi H-1 sebelum acara?,baseline,Calvin,4,1,4,4,1
+Event apa saja yang butuh registrasi H-1 sebelum acara?,engineered,Delvin,3,0,3,4,1
+Event apa saja yang butuh registrasi H-1 sebelum acara?,engineered,Calvin,4,1,4,4,1
+Tampilkan event yang menerima peserta dari luar UIB.,baseline,Delvin,2,1,4,3,1
+Tampilkan event yang menerima peserta dari luar UIB.,baseline,Calvin,4,0,5,4,1
+Tampilkan event yang menerima peserta dari luar UIB.,engineered,Delvin,3,1,4,4,1
+Tampilkan event yang menerima peserta dari luar UIB.,engineered,Calvin,4,1,3,4,1
+Apakah ada event dengan kuota prioritas untuk mahasiswa baru?,baseline,Delvin,4,1,2,5,1
+Apakah ada event dengan kuota prioritas untuk mahasiswa baru?,baseline,Calvin,2,1,2,3,1
+Apakah ada event dengan kuota prioritas untuk mahasiswa baru?,engineered,Delvin,4,0,4,4,1
+Apakah ada event dengan kuota prioritas untuk mahasiswa baru?,engineered,Calvin,4,1,3,3,1
+"Beri output JSON: [{""title"",""date"",""register_url""}] untuk sertifikasi November 2025.,baseline,Delvin,2,1,3,4,1"
+"Beri output JSON: [{""title"",""date"",""register_url""}] untuk sertifikasi November 2025.,baseline,Calvin,4,0,4,4,1"
+"Beri output JSON: [{""title"",""date"",""register_url""}] untuk sertifikasi November 2025.,engineered,Delvin,3,1,3,4,1"
+"Beri output JSON: [{""title"",""date"",""register_url""}] untuk sertifikasi November 2025.,engineered,Calvin,2,1,4,5,1"
+Buat ringkasan 5 baris untuk seluruh event bertema â€˜karierâ€™ bulan November 2025.,baseline,Delvin,4,0,3,3,1
+Buat ringkasan 5 baris untuk seluruh event bertema â€˜karierâ€™ bulan November 2025.,baseline,Calvin,4,1,3,2,1
+Buat ringkasan 5 baris untuk seluruh event bertema â€˜karierâ€™ bulan November 2025.,engineered,Delvin,4,1,5,5,1
+Buat ringkasan 5 baris untuk seluruh event bertema â€˜karierâ€™ bulan November 2025.,engineered,Calvin,3,1,3,3,1
+Saya ingin event yang diadakan pada jam kerja (09:00â€“17:00) saja di Oktober 2025.,baseline,Delvin,2,1,3,2,1
+Saya ingin event yang diadakan pada jam kerja (09:00â€“17:00) saja di Oktober 2025.,baseline,Calvin,2,1,3,3,1
+Saya ingin event yang diadakan pada jam kerja (09:00â€“17:00) saja di Oktober 2025.,engineered,Delvin,5,1,4,4,1
+Saya ingin event yang diadakan pada jam kerja (09:00â€“17:00) saja di Oktober 2025.,engineered,Calvin,2,1,5,3,1
+Tampilkan event yang memiliki sesi networking.,baseline,Delvin,4,1,4,3,1
+Tampilkan event yang memiliki sesi networking.,baseline,Calvin,3,1,3,3,1
+Tampilkan event yang memiliki sesi networking.,engineered,Delvin,4,1,4,4,1
+Tampilkan event yang memiliki sesi networking.,engineered,Calvin,3,1,4,4,1
+Apakah ada event yang menyediakan doorprize?,baseline,Delvin,4,1,4,3,0
+Apakah ada event yang menyediakan doorprize?,baseline,Calvin,3,1,2,5,0
+Apakah ada event yang menyediakan doorprize?,engineered,Delvin,4,1,5,4,1
+Apakah ada event yang menyediakan doorprize?,engineered,Calvin,3,1,4,4,1
+Sertakan penjelasan apakah ada dress code untuk event-event November 2025 (jika tercantum).,baseline,Delvin,3,1,4,3,1
+Sertakan penjelasan apakah ada dress code untuk event-event November 2025 (jika tercantum).,baseline,Calvin,3,1,2,4,1
+Sertakan penjelasan apakah ada dress code untuk event-event November 2025 (jika tercantum).,engineered,Delvin,5,1,3,3,1
+Sertakan penjelasan apakah ada dress code untuk event-event November 2025 (jika tercantum).,engineered,Calvin,4,1,5,4,1
+Apakah ada event yang memerlukan perangkat/laptop?,baseline,Delvin,4,1,2,2,0
+Apakah ada event yang memerlukan perangkat/laptop?,baseline,Calvin,4,1,3,3,1
+Apakah ada event yang memerlukan perangkat/laptop?,engineered,Delvin,3,1,5,3,1
+Apakah ada event yang memerlukan perangkat/laptop?,engineered,Calvin,3,1,4,5,0
+Ada acara di bulan 12 yang topiknya â€˜data scienceâ€™?,baseline,Delvin,2,1,3,3,1
+Ada acara di bulan 12 yang topiknya â€˜data scienceâ€™?,baseline,Calvin,4,1,3,5,1
+Ada acara di bulan 12 yang topiknya â€˜data scienceâ€™?,engineered,Delvin,5,1,3,4,0
+Ada acara di bulan 12 yang topiknya â€˜data scienceâ€™?,engineered,Calvin,4,1,4,4,1
+Tuliskan hanya tanggal (YYYY-MM-DD) semua webinar bulan 11.,baseline,Delvin,3,0,4,3,1
+Tuliskan hanya tanggal (YYYY-MM-DD) semua webinar bulan 11.,baseline,Calvin,4,1,3,3,1
+Tuliskan hanya tanggal (YYYY-MM-DD) semua webinar bulan 11.,engineered,Delvin,3,1,4,4,1
+Tuliskan hanya tanggal (YYYY-MM-DD) semua webinar bulan 11.,engineered,Calvin,3,1,4,5,1
+formatkan jawaban dalam bullet yang sangat singkat untuk event Q4 2025.,baseline,Delvin,4,1,3,3,1
+formatkan jawaban dalam bullet yang sangat singkat untuk event Q4 2025.,baseline,Calvin,2,1,3,4,1
+formatkan jawaban dalam bullet yang sangat singkat untuk event Q4 2025.,engineered,Delvin,5,1,3,4,1
+formatkan jawaban dalam bullet yang sangat singkat untuk event Q4 2025.,engineered,Calvin,3,0,4,4,1
+Sebutkan 2 event paling relevan untuk alumni UIB di November 2025.,baseline,Delvin,4,1,4,3,1
+Sebutkan 2 event paling relevan untuk alumni UIB di November 2025.,baseline,Calvin,3,1,4,3,1
+Sebutkan 2 event paling relevan untuk alumni UIB di November 2025.,engineered,Delvin,4,1,4,5,0
+Sebutkan 2 event paling relevan untuk alumni UIB di November 2025.,engineered,Calvin,4,0,3,2,1
+Tampilkan event yang target audiensnya dosen atau staff (jika ada).,baseline,Delvin,3,1,4,3,1
+Tampilkan event yang target audiensnya dosen atau staff (jika ada).,baseline,Calvin,3,1,3,4,1
+Tampilkan event yang target audiensnya dosen atau staff (jika ada).,engineered,Delvin,3,1,3,4,1
+Tampilkan event yang target audiensnya dosen atau staff (jika ada).,engineered,Calvin,3,0,4,4,0
+Cari 3 gambar kampus UIB bertema â€˜perpustakaanâ€™ beserta sumbernya.,baseline,Delvin,2,1,3,3,1
+Cari 3 gambar kampus UIB bertema â€˜perpustakaanâ€™ beserta sumbernya.,baseline,Calvin,3,0,4,2,1
+Cari 3 gambar kampus UIB bertema â€˜perpustakaanâ€™ beserta sumbernya.,engineered,Delvin,5,1,4,4,1
+Cari 3 gambar kampus UIB bertema â€˜perpustakaanâ€™ beserta sumbernya.,engineered,Calvin,5,1,5,3,1
+Gambar â€˜laboratorium UIBâ€™ 2 contoh, link sumber wajib ada.,baseline,Delvin,4,0,4,4,1
+Gambar â€˜laboratorium UIBâ€™ 2 contoh, link sumber wajib ada.,baseline,Calvin,4,1,3,3,1
+Gambar â€˜laboratorium UIBâ€™ 2 contoh, link sumber wajib ada.,engineered,Delvin,4,1,4,3,1
+Gambar â€˜laboratorium UIBâ€™ 2 contoh, link sumber wajib ada.,engineered,Calvin,4,0,3,5,1
+Ada event yang sudah full booked? (jika ada indikatornya),baseline,Delvin,4,1,4,4,1
+Ada event yang sudah full booked? (jika ada indikatornya),baseline,Calvin,3,1,2,4,0
+Ada event yang sudah full booked? (jika ada indikatornya),engineered,Delvin,3,0,4,4,0
+Ada event yang sudah full booked? (jika ada indikatornya),engineered,Calvin,4,0,4,3,1
+Sebutkan event yang mensyaratkan prasyarat tertentu (misal lulus modul A).,baseline,Delvin,4,1,3,3,1
+Sebutkan event yang mensyaratkan prasyarat tertentu (misal lulus modul A).,baseline,Calvin,3,1,3,4,1
+Sebutkan event yang mensyaratkan prasyarat tertentu (misal lulus modul A).,engineered,Delvin,4,0,3,4,0
+Sebutkan event yang mensyaratkan prasyarat tertentu (misal lulus modul A).,engineered,Calvin,3,1,5,4,0
+Tampilkan event yang dapat ditonton ulang (recording tersedia).,baseline,Delvin,3,1,3,4,1
+Tampilkan event yang dapat ditonton ulang (recording tersedia).,baseline,Calvin,2,1,3,4,1
+Tampilkan event yang dapat ditonton ulang (recording tersedia).,engineered,Delvin,4,1,3,4,1
+Tampilkan event yang dapat ditonton ulang (recording tersedia).,engineered,Calvin,5,0,4,4,1
+Buat daftar event yang relevan untuk persiapan magang industri bulan November 2025.,baseline,Delvin,3,1,3,1,1
+Buat daftar event yang relevan untuk persiapan magang industri bulan November 2025.,baseline,Calvin,3,0,3,2,1
+Buat daftar event yang relevan untuk persiapan magang industri bulan November 2025.,engineered,Delvin,4,0,3,4,1
+Buat daftar event yang relevan untuk persiapan magang industri bulan November 2025.,engineered,Calvin,3,1,4,3,1
+Beri 3 event untuk pengembangan soft skill pada Desember 2025.,baseline,Delvin,3,0,4,4,1
+Beri 3 event untuk pengembangan soft skill pada Desember 2025.,baseline,Calvin,3,1,4,3,1
+Beri 3 event untuk pengembangan soft skill pada Desember 2025.,engineered,Delvin,4,1,3,4,1
+Beri 3 event untuk pengembangan soft skill pada Desember 2025.,engineered,Calvin,3,1,4,4,1
+Apakah ada event keuangan/bisnis di Q4 2025?,baseline,Delvin,2,1,4,3,1
+Apakah ada event keuangan/bisnis di Q4 2025?,baseline,Calvin,4,1,4,5,1
+Apakah ada event keuangan/bisnis di Q4 2025?,engineered,Delvin,5,0,5,5,1
+Apakah ada event keuangan/bisnis di Q4 2025?,engineered,Calvin,4,1,3,4,1
+Tampilkan 3 event dengan waktu paling pagi di November 2025.,baseline,Delvin,2,1,3,3,0
+Tampilkan 3 event dengan waktu paling pagi di November 2025.,baseline,Calvin,3,1,4,3,1
+Tampilkan 3 event dengan waktu paling pagi di November 2025.,engineered,Delvin,4,1,4,4,1
+Tampilkan 3 event dengan waktu paling pagi di November 2025.,engineered,Calvin,4,1,4,5,1
+Urutkan event Oktober 2025 berdasarkan abjad judul.,baseline,Delvin,3,0,2,4,1
+Urutkan event Oktober 2025 berdasarkan abjad judul.,baseline,Calvin,3,1,4,4,1
+Urutkan event Oktober 2025 berdasarkan abjad judul.,engineered,Delvin,3,0,4,3,1
+Urutkan event Oktober 2025 berdasarkan abjad judul.,engineered,Calvin,3,1,4,4,1
+Saya butuh agenda UIB minggu ini (Seninâ€“Minggu).,baseline,Delvin,3,0,3,3,1
+Saya butuh agenda UIB minggu ini (Seninâ€“Minggu).,baseline,Calvin,4,1,3,3,1
+Saya butuh agenda UIB minggu ini (Seninâ€“Minggu).,engineered,Delvin,3,1,3,4,1
+Saya butuh agenda UIB minggu ini (Seninâ€“Minggu).,engineered,Calvin,3,1,5,3,1
+Jika saya hanya available tanggal 25â€“30 November 2025, event apa yang cocok?,baseline,Delvin,3,1,3,4,1
+Jika saya hanya available tanggal 25â€“30 November 2025, event apa yang cocok?,baseline,Calvin,3,1,4,3,0
+Jika saya hanya available tanggal 25â€“30 November 2025, event apa yang cocok?,engineered,Delvin,5,1,5,4,1
+Jika saya hanya available tanggal 25â€“30 November 2025, event apa yang cocok?,engineered,Calvin,5,1,4,5,1
+Tampilkan event yang punya narasumber dari industri (bukan internal) di Q4 2025.,baseline,Delvin,5,1,3,4,1
+Tampilkan event yang punya narasumber dari industri (bukan internal) di Q4 2025.,baseline,Calvin,2,1,4,3,0
+Tampilkan event yang punya narasumber dari industri (bukan internal) di Q4 2025.,engineered,Delvin,3,1,4,5,0
+Tampilkan event yang punya narasumber dari industri (bukan internal) di Q4 2025.,engineered,Calvin,5,1,4,3,1
+Ada info beasiswa atau seminar beasiswa di Q4 2025?,baseline,Delvin,3,1,2,3,1
+Ada info beasiswa atau seminar beasiswa di Q4 2025?,baseline,Calvin,4,0,4,2,1
+Ada info beasiswa atau seminar beasiswa di Q4 2025?,engineered,Delvin,3,1,3,3,1
+Ada info beasiswa atau seminar beasiswa di Q4 2025?,engineered,Calvin,4,1,5,4,1

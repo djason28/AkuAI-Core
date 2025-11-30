@@ -292,19 +292,68 @@ func (s *UIBEventService) AnalyzeQueryForUIB(query string) bool {
 		}
 	}
 
-	// Also detect general webinar/sertifikasi queries for November 2025
+	// UIB general info (kontak/website) – still use UIB metadata context
+	if strings.Contains(queryLower, "uib") {
+		contactKeys := []string{"kontak", "email", "website", "situs", "alamat", "telepon", "hubungi"}
+		for _, k := range contactKeys {
+			if strings.Contains(queryLower, k) {
+				return true
+			}
+		}
+	}
+
+	// Also detect general webinar/sertifikasi queries for Oct–Dec 2025
 	// since we have UIB data for that period
 	monthEventPatterns := []string{
 		"webinar november", "sertifikasi november",
 		"acara november", "event november",
-		"seminar november", "workshop november",
+		"seminar november", "workshop november", "nov ",
 		"webinar oktober", "sertifikasi oktober",
-		"webinar desember", "sertifikasi desember",
+		"webinar desember", "sertifikasi desember", "okt ", "des ",
 		"november 2025", "oktober 2025", "desember 2025",
 	}
 
 	for _, pattern := range monthEventPatterns {
 		if strings.Contains(queryLower, pattern) {
+			return true
+		}
+	}
+
+	// Numeric month detection (10,11,12) optionally with year 2025
+	// e.g., "bulan 11", "bln 10", "11 2025", "nov 2025" handled above; here we catch pure numeric
+	if containsNumericMonth(queryLower) {
+		return true
+	}
+
+	// Heuristic: default to UIB if query talks about events and no other university is explicitly mentioned
+	genericEventKeys := []string{"acara", "event", "seminar", "webinar", "sertifikasi", "pelatihan", "workshop"}
+	otherCampusHints := []string{"universitas indonesia", "ui ", "ugm", "gadjah mada", "itb", "ipb", "airlangga", "binus"}
+	hasEventWord := false
+	for _, k := range genericEventKeys {
+		if strings.Contains(queryLower, k) {
+			hasEventWord = true
+			break
+		}
+	}
+	mentionsOther := false
+	for _, o := range otherCampusHints {
+		if strings.Contains(queryLower, o) {
+			mentionsOther = true
+			break
+		}
+	}
+	if hasEventWord && !mentionsOther {
+		return true
+	}
+
+	// Event title detection: if user mentions an event title (or a strong substring), treat as UIB-related
+	// This helps queries like "Sertifikasi Digital Marketing for Business" without saying UIB
+	for _, ev := range s.GetAllEvents() {
+		titleLower := strings.ToLower(strings.TrimSpace(ev.Title))
+		if titleLower == "" {
+			continue
+		}
+		if strings.Contains(queryLower, titleLower) || strings.Contains(titleLower, strings.TrimSpace(queryLower)) {
 			return true
 		}
 	}
@@ -321,6 +370,22 @@ func (s *UIBEventService) GetRelevantEventsForQuery(query string) []models.UIBEv
 	monthPrefixes := detectMonthPrefixes(queryLower)
 	requiredType := detectEventType(queryLower)
 
+	// Relative range detection (e.g., minggu depan)
+	if start, end, ok := detectRelativeRange(queryLower, time.Now()); ok {
+		// prefilter by date range
+		ranged := make([]models.UIBEvent, 0)
+		for _, ev := range allEvents {
+			evDate, err := time.Parse("2006-01-02", ev.Date)
+			if err != nil {
+				continue
+			}
+			if (evDate.Equal(start) || evDate.After(start)) && (evDate.Equal(end) || evDate.Before(end)) {
+				ranged = append(ranged, ev)
+			}
+		}
+		allEvents = ranged
+	}
+
 	for _, event := range allEvents {
 		datePrefix := ""
 		if len(event.Date) >= 7 {
@@ -329,7 +394,8 @@ func (s *UIBEventService) GetRelevantEventsForQuery(query string) []models.UIBEv
 		if len(monthPrefixes) > 0 && (datePrefix == "" || !monthPrefixes[datePrefix]) {
 			continue
 		}
-		if requiredType != "" && !strings.EqualFold(event.Type, requiredType) {
+		// If both webinar and certification are requested, don't filter by single type
+		if requiredType != "" && requiredType != "both" && !strings.EqualFold(event.Type, requiredType) {
 			continue
 		}
 		if s.isEventRelevantToQuery(event, queryLower) {
@@ -346,7 +412,7 @@ func (s *UIBEventService) GetRelevantEventsForQuery(query string) []models.UIBEv
 			if len(monthPrefixes) > 0 && (datePrefix == "" || !monthPrefixes[datePrefix]) {
 				continue
 			}
-			if requiredType != "" && !strings.EqualFold(event.Type, requiredType) {
+			if requiredType != "" && requiredType != "both" && !strings.EqualFold(event.Type, requiredType) {
 				continue
 			}
 			if len(monthPrefixes) > 0 || requiredType != "" {
@@ -409,9 +475,9 @@ func (s *UIBEventService) isEventRelevantToQuery(event models.UIBEvent, queryLow
 
 func detectMonthPrefixes(queryLower string) map[string]bool {
 	monthMap := map[string][]string{
-		"2025-10": {"oktober", "october"},
-		"2025-11": {"november"},
-		"2025-12": {"desember", "december"},
+		"2025-10": {"okt", "oktober", "october"},
+		"2025-11": {"nov", "november"},
+		"2025-12": {"des", "desember", "december"},
 	}
 
 	result := make(map[string]bool)
@@ -424,13 +490,54 @@ func detectMonthPrefixes(queryLower string) map[string]bool {
 		}
 	}
 
+	// Numeric month handling: 10, 11, 12 (optionally preceded by "bulan"/"bln")
+	// We keep it simple and robust for Indonesian queries
+	if containsNumericMonth(queryLower) {
+		if strings.Contains(queryLower, "10") {
+			result["2025-10"] = true
+		}
+		if strings.Contains(queryLower, "11") {
+			result["2025-11"] = true
+		}
+		if strings.Contains(queryLower, "12") {
+			result["2025-12"] = true
+		}
+	}
+
 	return result
 }
 
-func detectEventType(queryLower string) string {
-	if strings.Contains(queryLower, "webinar") || strings.Contains(queryLower, "seminar") || strings.Contains(queryLower, "talkshow") || strings.Contains(queryLower, "kuliah umum") {
-		return "webinar"
+func containsNumericMonth(s string) bool {
+	// normalize whitespace
+	s = strings.ReplaceAll(s, "\t", " ")
+	s = strings.ReplaceAll(s, "\n", " ")
+	// split and strip trailing punctuation from tokens
+	tokens := strings.Fields(s)
+	clean := func(tok string) string {
+		tok = strings.TrimSpace(tok)
+		// strip common trailing punctuation
+		tok = strings.Trim(tok, "?!,:.;()[]{}")
+		return tok
 	}
+	for i, tok := range tokens {
+		ct := clean(tok)
+		if ct == "bulan" || ct == "bln" {
+			if i+1 < len(tokens) {
+				nt := clean(tokens[i+1])
+				if nt == "10" || nt == "11" || nt == "12" {
+					return true
+				}
+			}
+		}
+		if ct == "10" || ct == "11" || ct == "12" { // tolerate bare numeric month
+			return true
+		}
+	}
+	return false
+}
+
+func detectEventType(queryLower string) string {
+	hasWeb := strings.Contains(queryLower, "webinar") || strings.Contains(queryLower, "seminar") || strings.Contains(queryLower, "talkshow") || strings.Contains(queryLower, "kuliah umum")
 
 	certKeywords := []string{
 		"sertifikasi",
@@ -440,12 +547,42 @@ func detectEventType(queryLower string) string {
 		"workshop",
 		"bootcamp",
 	}
-
+	hasCert := false
 	for _, keyword := range certKeywords {
 		if strings.Contains(queryLower, keyword) {
-			return "certification"
+			hasCert = true
+			break
 		}
 	}
 
+	if hasWeb && hasCert {
+		return "both"
+	}
+	if hasWeb {
+		return "webinar"
+	}
+	if hasCert {
+		return "certification"
+	}
 	return ""
+}
+
+// detectRelativeRange recognizes phrases like "minggu depan" and returns an inclusive [start, end] range
+func detectRelativeRange(queryLower string, base time.Time) (time.Time, time.Time, bool) {
+	// Normalize base to midnight
+	base = time.Date(base.Year(), base.Month(), base.Day(), 0, 0, 0, 0, base.Location())
+	if strings.Contains(queryLower, "minggu depan") || strings.Contains(queryLower, "pekan depan") {
+		// find next Monday from base, then range Monday..Sunday
+		// weekday: Monday=1 ... Sunday=0 in Go with Weekday()
+		wd := int(base.Weekday()) // Sunday=0
+		daysUntilNextMon := (8 - wd) % 7
+		if daysUntilNextMon == 0 {
+			daysUntilNextMon = 7
+		}
+		start := base.AddDate(0, 0, daysUntilNextMon)
+		// end Sunday of that week
+		end := start.AddDate(0, 0, 6)
+		return start, end, true
+	}
+	return time.Time{}, time.Time{}, false
 }

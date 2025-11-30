@@ -5,6 +5,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -15,6 +16,7 @@ var (
 	GoogleAPIKey       string
 	GoogleAPI_CX       string
 	AppEnv             string
+	PromptMode         string // baseline | engineered | both
 	IsStaging          bool
 	IsProduction       bool
 	IsGeminiEnabled    bool
@@ -57,6 +59,7 @@ func init() {
 	GoogleAPIKey = os.Getenv("GOOGLE_API_KEY")
 
 	AppEnv = os.Getenv("APP_ENV")
+	PromptMode = strings.ToLower(strings.TrimSpace(os.Getenv("PROMPT_MODE")))
 
 	MySQLHost = os.Getenv("MYSQL_HOST")
 	MySQLPort = os.Getenv("MYSQL_PORT")
@@ -73,6 +76,15 @@ func init() {
 
 	IsGeminiEnabled = os.Getenv("IS_GEMINI_ENABLED") == "1"
 	IsGoogleAPIEnabled = os.Getenv("IS_GOOGLEAPI_ENABLED") == "1"
+
+	// default prompt mode
+	if PromptMode == "" {
+		PromptMode = "engineered"
+	}
+	if PromptMode != "baseline" && PromptMode != "engineered" && PromptMode != "both" {
+		log.Printf("[config] WARN: invalid PROMPT_MODE=%s, defaulting to 'engineered'", PromptMode)
+		PromptMode = "engineered"
+	}
 
 	if GeminiModel == "" {
 		GeminiModel = "gemini-2.0-flash"
@@ -97,6 +109,7 @@ func init() {
 	log.Printf("[config] AppEnv=%s IsStaging=%v IsProduction=%v", AppEnv, IsStaging, IsProduction)
 	log.Printf("[config] IsGeminiEnabled=%v GeminiAPIKeyPresent=%v", IsGeminiEnabled, GeminiAPIKey != "")
 	log.Printf("[config] GeminiModel=%s", GeminiModel)
+	log.Printf("[config] PromptMode=%s", PromptMode)
 	log.Printf("[config] RateLimit window=%ds capacity=%d userConc=%d dupWindow=%ds cacheTTL=%ds",
 		RateLimitWindowSeconds, RateLimitCapacity, UserConcurrencyLimit, DuplicateWindowSeconds, ChatCacheTTLSeconds)
 }
